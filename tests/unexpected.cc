@@ -8,7 +8,7 @@
 
 using namespace vien;
 
-TEST_CASE("Copy ctor conditionally explicit", "[unexpected(unexpected<Err> const&)]") {
+TEST_CASE("Copy ctor conditionally explicit", "[unexpected][copy][explicit]") {
     REQUIRE(std::is_convertible_v<unexpected<char const*> const&,
                                   unexpected<std::string>>);
     REQUIRE(!std::is_convertible_v<unexpected<std::string_view> const&,
@@ -17,7 +17,7 @@ TEST_CASE("Copy ctor conditionally explicit", "[unexpected(unexpected<Err> const
                                         unexpected<std::string>>);
 }
 
-TEST_CASE("Move ctor conditionally explicit", "[unexpected(unexpected<Err>&&)]") {
+TEST_CASE("Move ctor conditionally explicit", "[unexpected][move][explicit]") {
     REQUIRE(std::is_convertible_v<unexpected<char const*>&&,
                                   unexpected<std::string>>);
     REQUIRE(!std::is_convertible_v<unexpected<std::string_view>&&,
@@ -26,7 +26,7 @@ TEST_CASE("Move ctor conditionally explicit", "[unexpected(unexpected<Err>&&)]")
                                         unexpected<std::string>>);
 }
 
-TEST_CASE("Change val_ through reference", "[value()]") {
+TEST_CASE("val_ modifiable through value()", "[unexpected][value]") {
     unexpected<int> u1{42};
     REQUIRE(u1.value() == 42);
 
@@ -34,7 +34,7 @@ TEST_CASE("Change val_ through reference", "[value()]") {
     REQUIRE(u1.value() == 30);
 }
 
-TEST_CASE("Comparison", "[operator==, operator!=]") {
+TEST_CASE("Comparisons type agnostic", "[unexpected][operator==][operator!=]") {
     unexpected<int>  u1{5};
     unexpected<int>  u2{10};
     unexpected<long> u3{10};
