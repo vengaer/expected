@@ -9,6 +9,8 @@
 using namespace vien;
 
 TEST_CASE("Copy ctor conditionally explicit", "[unexpected(unexpected<Err> const&)]") {
+    REQUIRE(std::is_convertible_v<unexpected<char const*> const&,
+                                  unexpected<std::string>>);
     REQUIRE(!std::is_convertible_v<unexpected<std::string_view> const&,
                                    unexpected<std::string>>);
     REQUIRE(is_explicitly_convertible_v<unexpected<std::string_view> const&,
@@ -16,6 +18,8 @@ TEST_CASE("Copy ctor conditionally explicit", "[unexpected(unexpected<Err> const
 }
 
 TEST_CASE("Move ctor conditionally explicit", "[unexpected(unexpected<Err>&&)]") {
+    REQUIRE(std::is_convertible_v<unexpected<char const*>&&,
+                                  unexpected<std::string>>);
     REQUIRE(!std::is_convertible_v<unexpected<std::string_view>&&,
                                    unexpected<std::string>>);
     REQUIRE(is_explicitly_convertible_v<unexpected<std::string_view>&&,
