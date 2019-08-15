@@ -85,6 +85,15 @@ template <typename T>
 inline bool constexpr is_trivially_move_constructible_or_void_v =
         is_trivially_move_constructible_or_void<T>::value;
 
+template <typename T>
+struct is_nothrow_move_constructible_or_void
+    : std::bool_constant<std::is_nothrow_move_constructible_v<T> ||
+                         std::is_void_v<T>> { };
+
+template <typename T>
+inline bool constexpr is_nothrow_move_constructible_or_void_v =
+    is_nothrow_move_constructible_or_void<T>::value;
+
 template <typename T, typename E, 
           bool = std::is_trivially_destructible_v<T>, 
           bool = std::is_trivially_destructible_v<E>>
@@ -284,12 +293,66 @@ struct expected_copy_ctor_base<T, E, true, true>
     }
 };
 
+template <typename T, typename E,
+          bool = is_move_constructible_or_void_v<T> && 
+                 std::is_move_constructible_v<E>,
+          bool = is_trivially_move_constructible_or_void_v<T> &&
+                 std::is_trivially_move_constructible_v<E>>
+struct expected_move_ctor_base;
+
+/* Partial specialization for when:
+ * T is not move constructible or void, and/or E is not move constructible */
+template <typename T, typename E>
+struct expected_move_ctor_base<T, E, false, false> 
+    : expected_copy_ctor_base<T,E> {
+    using expected_copy_ctor_base<T,E>::expected_copy_ctor_base;
+
+    expected_move_ctor_base(expected_move_ctor_base const&) = default;
+    expected_move_ctor_base(expected_move_ctor_base&&) = delete;
+};
+
+/* Partial specialization for when:
+ * T is move constructible or void, and E is move constructible,
+ * T is not trivially move constructible or void, and/or E is not trivially move constructible */
+template <typename T, typename E>
+struct expected_move_ctor_base<T, E, true, false>
+    : expected_copy_ctor_base<T,E> {
+    using expected_copy_ctor_base<T,E>::expected_copy_ctor_base;
+
+    expected_move_ctor_base(expected_move_ctor_base const&) = default;
+    expected_move_ctor_base(expected_move_ctor_base&& rhs) 
+        noexcept(is_nothrow_move_constructible_or_void_v<T> &&
+                 std::is_nothrow_move_constructible_v<E>) {
+        if(rhs.has_val_)
+            store(std::move(rhs.val_));
+        else
+            store_unexpected(std::move(rhs.error()));
+    }
+};
+
+/* Partial specialization for when:
+ * T is trivially move constructible or void and E is trivially move constructible */
+template <typename T, typename E>
+struct expected_move_ctor_base<T, E, true, true>
+    : expected_copy_ctor_base<T,E> {
+    using expected_copy_ctor_base<T,E>::expected_copy_ctor_base;
+
+    expected_move_ctor_base(expected_move_ctor_base const&) = default;
+    constexpr expected_move_ctor_base(expected_move_ctor_base&& rhs) 
+        noexcept(is_nothrow_move_constructible_or_void_v<T> &&
+                 std::is_nothrow_move_constructible_v<E>) {
+        if(rhs.has_val_)
+            store(std::move(rhs.val_));
+        else
+            store_unexpected(std::move(rhs.error()));
+    }
+};
 
 } /* namespace impl */
 
 
 template <typename T, typename E>
-class expected : impl::expected_copy_ctor_base<T,E> {
+class expected : impl::expected_move_ctor_base<T,E> {
     static_assert(!std::is_reference_v<T>, "T must not be a reference");
     static_assert(!std::is_reference_v<E>, "E must not be a reference");
     static_assert(!std::is_same_v<T, std::remove_cv_t<unexpected<E>>>,
@@ -302,7 +365,7 @@ class expected : impl::expected_copy_ctor_base<T,E> {
         template <typename U>
         using rebind = expected<U, error_type>;
 
-        using impl::expected_copy_ctor_base<T,E>::expected_copy_ctor_base;
+        using impl::expected_move_ctor_base<T,E>::expected_move_ctor_base;
 
     private:
 };
