@@ -124,7 +124,7 @@ struct expected_storage_base<T, E, false, true> {
     };
 };
 
-/*T trivially destructible, E not trivially destructible */
+/* T trivially destructible, E not trivially destructible */
 template <typename T, typename E>
 struct expected_storage_base<T, E, true, false> {
 
@@ -200,13 +200,13 @@ struct expected_storage_base<void, E, false, false> {
 template <typename T, typename E>
 struct expected_member_base : expected_storage_base<T,E> {
     template <typename... Args>
-    void construct(Args&&... args) noexcept {
+    void store(Args&&... args) noexcept {
         new(std::addressof(this->val_)) T(std::forward<Args>(args)...);
         this->has_val_ = true;
     }
 
     template <typename... Args>
-    void construct_unexpected(Args&&... args) noexcept {
+    void store_unexpected(Args&&... args) noexcept {
         new (std::addressof(this->unexpect_)) unexpected<E>(std::forward<Args>(args)...);
         this->has_val_ = false;
     }
@@ -215,12 +215,12 @@ struct expected_member_base : expected_storage_base<T,E> {
 template <typename E>
 struct expected_member_base<void, E> : expected_storage_base<void,E> {
     template <typename... Args>
-    void construct(Args&&...) noexcept {
+    void store(Args&&...) noexcept {
         this->has_val_ = true;
     }
 
     template <typename... Args>
-    void construct_unexpected(Args&&... args) noexcept {
+    void store_unexpected(Args&&... args) noexcept {
         new (std::addressof(this->unexpect_)) unexpected<E>(std::forward<Args>(args)...);
         this->has_val_ = false;
     }
@@ -263,9 +263,9 @@ struct expected_copy_ctor_base<T, E, true, false>
 
     expected_copy_ctor_base(expected_copy_ctor_base const& rhs) {
         if(rhs.has_val_)
-            construct(rhs.val_);
+            store(rhs.val_);
         else
-            construct_unexpected(unexpected(rhs.error()));
+            store_unexpected(unexpected(rhs.error()));
     }
 };
 
@@ -278,9 +278,9 @@ struct expected_copy_ctor_base<T, E, true, true>
 
     constexpr expected_copy_ctor_base(expected_copy_ctor_base const& rhs) {
         if(rhs.has_val_)
-            construct(rhs.val_);
+            store(rhs.val_);
         else
-            construct_unexpected(unexpected(rhs.error()));
+            store_unexpected(unexpected(rhs.error()));
     }
 };
 
