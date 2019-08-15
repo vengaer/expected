@@ -370,7 +370,6 @@ class expected : impl::expected_move_ctor_base<T,E> {
     private:
 };
 
-
 template <typename E>
 class unexpected {
     static_assert(!std::is_same_v<E, void>, "E cannot be void");
@@ -412,8 +411,8 @@ class unexpected {
         constexpr E const&& value() const && noexcept;
         constexpr E&& value() && noexcept;
 
-        template <typename = std::enable_if_t<std::is_swappable_v<E>>>
-        void swap(unexpected&) noexcept(std::is_nothrow_swappable_v<E>);
+        template <typename Err = E, typename = std::enable_if_t<std::is_swappable_v<Err>>>
+        void swap(unexpected&) noexcept(std::is_nothrow_swappable_v<Err>);
 
         template <typename E1, typename E2>
         friend constexpr bool operator==(unexpected<E1> const&, unexpected<E2> const&);
@@ -504,8 +503,8 @@ constexpr E&& unexpected<E>::value() && noexcept {
 }
 
 template <typename E>
-template <typename>
-void unexpected<E>::swap(unexpected& other) noexcept(std::is_nothrow_swappable_v<E>) {
+template <typename Err, typename>
+void unexpected<E>::swap(unexpected& other) noexcept(std::is_nothrow_swappable_v<Err>) {
     std::swap(val_, other.val_);
 }
 
