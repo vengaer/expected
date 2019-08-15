@@ -36,7 +36,15 @@ TEST_CASE("Copy constructible iff type parameters are", "[copy][conditional]") {
 
     REQUIRE(std::is_copy_constructible_v<expected<std::string, int>>);
     REQUIRE(!std::is_copy_constructible_v<expected<not_copyable_t, int>>);
-    REQUIRE(!std::is_copy_constructible_v<expected<int, not_copyable_t>>);
+}
+
+TEST_CASE("Move constructible iff type parameters are", "[move][conditional]") {
+    struct not_movable_t {
+        not_movable_t(not_movable_t&&) = delete;
+    };
+
+    REQUIRE(std::is_move_constructible_v<expected<std::string, int>>);
+    REQUIRE(!std::is_move_constructible_v<expected<not_movable_t, int>>);
 }
 
 #endif
