@@ -8,7 +8,7 @@
 
 using namespace vien;
 
-TEST_CASE("Copy ctor conditionally explicit", "[unexpected][copy][explicit]") {
+TEST_CASE("Lvalue conversion ctor conditionally explicit", "[unexpected][conversion][explicit]") {
     REQUIRE(std::is_convertible_v<unexpected<char const*> const&,
                                   unexpected<std::string>>);
     REQUIRE(!std::is_convertible_v<unexpected<std::string_view> const&,
@@ -17,7 +17,7 @@ TEST_CASE("Copy ctor conditionally explicit", "[unexpected][copy][explicit]") {
                                         unexpected<std::string>>);
 }
 
-TEST_CASE("Move ctor conditionally explicit", "[unexpected][move][explicit]") {
+TEST_CASE("Rvalue conversion ctor conditionally explicit", "[unexpected][conversion][explicit]") {
     REQUIRE(std::is_convertible_v<unexpected<char const*>&&,
                                   unexpected<std::string>>);
     REQUIRE(!std::is_convertible_v<unexpected<std::string_view>&&,

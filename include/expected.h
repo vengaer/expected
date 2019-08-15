@@ -28,8 +28,12 @@ class unexpected {
                 std::enable_if_t<std::is_constructible_v<
                         E, std::initializer_list<U>, Args&&...>>>
         constexpr explicit unexpected(in_place_t, std::initializer_list<U>, Args&&...);
+
+        constexpr unexpected(unexpected const&) = default;
+        constexpr unexpected(unexpected&&) = default;
         
-        /* Mimcking C++20's conditionally explicit */
+        /* Non-explicit conversion ctor templates available iff is_convertible_v<Err, E> 
+         * is true. If not, the explicit versions are used */
         template <typename Err, typename = std::enable_if_t<std::is_convertible_v<Err, E>>>
         constexpr unexpected(unexpected<Err> const&);
         template <typename Err>
@@ -38,9 +42,6 @@ class unexpected {
         constexpr unexpected(unexpected<Err>&&);
         template <typename Err>
         constexpr explicit unexpected(unexpected<Err>&&);
-
-        constexpr unexpected(unexpected const&) = default;
-        constexpr unexpected(unexpected&&) = default;
 
         constexpr unexpected& operator=(unexpected const&) = default;
         constexpr unexpected& operator=(unexpected&&) = default;
