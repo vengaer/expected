@@ -8,16 +8,19 @@
 #include <string>
 #include <string_view>
 
+#define PRINT_BOOL_EXPR(...) std::cout << std::boolalpha << __VA_ARGS__ << "\n";
+
 int main() {
     using namespace vien;
-    /*
-    unexpected u{40};
-    std::cout << u.value() << "\n";
-    std::cout << std::boolalpha << std::is_convertible_v<std::string_view, std::string> << "\n";
-    std::string_view view{"asdf"};
-    unexpected<std::string_view> usv{view};
-    unexpected<std::string> us = static_cast<unexpected<std::string>>(usv);
-    */
+
+    PRINT_BOOL_EXPR(
+        std::is_convertible_v<expected<int, double>, expected<double, double>>
+    )
+    
+    expected<double, int> e;
+    expected<int, int> e1(e);
+    expected<int, int> e2(std::move(e));
+    //e.val_ = expected(10);
 
     return 0;
 }
