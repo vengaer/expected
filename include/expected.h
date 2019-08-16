@@ -198,13 +198,18 @@ inline bool constexpr expected_enable_non_explicit_forwarding_ref_ctor_v =
 
 /* expected hierarchy */
 
+/* expected_base */
+/* Provides constexpr default constructor, destructor
+ * and internal storage */
+
 template <typename T, typename E, 
           bool = std::is_trivially_destructible_v<T>, 
           bool = std::is_trivially_destructible_v<E>>
 struct expected_base;
 
 
-/* T trivially destructible, E trivially destructible */
+/* Both T and E are trivially destructible, expected should be 
+ * trivially destructible */
 template <typename T, typename E>
 struct expected_base<T, E, true, true> {
 
@@ -219,7 +224,8 @@ struct expected_base<T, E, true, true> {
     };
 };
 
-/* T not trivially destructible, E trivially destructible */
+/* T not trivially destructible and E trivially destructible,
+ * must call T's destructor explicitly */
 template <typename T, typename E>
 struct expected_base<T, E, false, true> {
     
@@ -237,7 +243,8 @@ struct expected_base<T, E, false, true> {
     };
 };
 
-/* T trivially destructible, E not trivially destructible */
+/* T trivially destructible and E not trivially destructible,
+ * must call E's destructor explicitly */
 template <typename T, typename E>
 struct expected_base<T, E, true, false> {
 
@@ -255,7 +262,8 @@ struct expected_base<T, E, true, false> {
     };
 };
 
-/* Neither T nor E trivially destructible */
+/* Neither T nor E trivially destructible, must call
+ * both T's and E's destructors explicitly */
 template <typename T, typename E>
 struct expected_base<T, E, false, false> {
 
@@ -275,7 +283,12 @@ struct expected_base<T, E, false, false> {
     };
 };
 
-/* T is void, E trivially destructible */
+
+/* The below are partial specialilzations for where T is void, use
+ * dummy type in union. */
+
+/* T is void, E trivially destructible. expected should be
+ * trivially destructible */
 template <typename E>
 struct expected_base<void, E, false, true> {
 
@@ -291,7 +304,8 @@ struct expected_base<void, E, false, true> {
     };
 };
 
-/* T is void, E not trivially destructible */
+/* T is void and E not trivially destructible,
+ * must call E's destructor explicitly */
 template <typename E>
 struct expected_base<void, E, false, false> {
 
@@ -310,10 +324,13 @@ struct expected_base<void, E, false, false> {
     };
 };
 
+/* expected_construction_base */
+/* Provides utility functions for placement newing 
+ * T or unexpected<E> into *this */
 template <typename T, typename E>
-struct expected_store_base : expected_base<T,E> {
+struct expected_construction_base : expected_base<T,E> {
     using expected_base<T,E>::expected_base;
-    constexpr expected_store_base() = default;
+    constexpr expected_construction_base() = default;
 
     template <typename... Args>
     void store(Args&&... args) noexcept {
@@ -328,10 +345,12 @@ struct expected_store_base : expected_base<T,E> {
     }
 };
 
+/* T is void. Provides utility functions for placement newing 
+ * void or unexpected<E> into *this */
 template <typename E>
-struct expected_store_base<void, E> : expected_base<void,E> {
+struct expected_construction_base<void, E> : expected_base<void,E> {
     using expected_base<void,E>::expected_base;
-    constexpr expected_store_base() = default;
+    constexpr expected_construction_base() = default;
 
     template <typename... Args>
     void store(Args&&...) noexcept {
@@ -345,20 +364,28 @@ struct expected_store_base<void, E> : expected_base<void,E> {
     }
 };
 
+/* expected_default_ctor_base */
+/* expected should be default constructible if T is default constructible
+ * or is void */
 template <typename T, typename E, 
     bool = is_default_constructible_or_void_v<T>>
-struct expected_default_ctor_base : expected_store_base<T,E> { 
-    using expected_store_base<T,E>::expected_store_base;
+struct expected_default_ctor_base : expected_construction_base<T,E> { 
+    using expected_construction_base<T,E>::expected_construction_base;
     expected_default_ctor_base() = default;
 };
 
-/* Delete default ctor if T is not default constructible or void */
+/* Delete default ctor iff T is neither default constructible nor void */
 template <typename T, typename E>
-struct expected_default_ctor_base<T,E,false> : expected_store_base<T,E> {
-    using expected_store_base<T,E>::expected_store_base;
+struct expected_default_ctor_base<T,E,false> : expected_construction_base<T,E> {
+    using expected_construction_base<T,E>::expected_construction_base;
     expected_default_ctor_base() = delete;
 };
 
+/* expected_copy_ctor_base */
+/* Delete copy ctor if T is neither copy constructible nor void
+ * or E is not copy constructible. Make the copy constructor 
+ * constexpr if T is trivially copy constructible or void, and
+ * E is trivially copy constructible */
 template <typename T, typename E,
           bool = is_copy_constructible_or_void_v<T> &&
                  std::is_copy_constructible_v<E>,
@@ -367,7 +394,8 @@ template <typename T, typename E,
 struct expected_copy_ctor_base;
 
 /* Partial specializationf for when:
- * T is not copy constructible or void, and/or E is not copy constructible */
+ * T is not copy constructible or void, and/or E is not copy 
+ * constructible, delete copy ctor */
 template <typename T, typename E>
 struct expected_copy_ctor_base<T, E, false, false> 
     : expected_default_ctor_base<T,E> {
@@ -377,9 +405,10 @@ struct expected_copy_ctor_base<T, E, false, false>
     expected_copy_ctor_base(expected_copy_ctor_base const&) = delete;
 };
 
-/* Partial specialization for when:
+/* Partial specialization for when
  * T is copy constructible or void and E is copy constructible
- * T is not trivially copy constructible or void, and/or E is not trivially copy constructible */
+ * T is not trivially copy constructible or void, and/or E is not trivially 
+ * copy constructible. expected should be non-constexpr copy constructible */
 template <typename T, typename E>
 struct expected_copy_ctor_base<T, E, true, false>
     : expected_default_ctor_base<T,E> {
@@ -394,8 +423,9 @@ struct expected_copy_ctor_base<T, E, true, false>
     }
 };
 
-/* Partial specialization for when:
- * T is trivially copy constructible or void, and E is trivially copy constructible */
+/* Partial specialization for when
+ * T is trivially copy constructible or void, and E is trivially 
+ * copy constructible. expected should be constexpr copy constructible */
 template <typename T, typename E>
 struct expected_copy_ctor_base<T, E, true, true>
     : expected_default_ctor_base<T,E> {
@@ -410,6 +440,11 @@ struct expected_copy_ctor_base<T, E, true, true>
     }
 };
 
+/* expected_move_ctor_base */
+/* Delete move ctor if T is neither move constructible nor void
+ * or E is not move constructible. Make the move constructor 
+ * constexpr if T is trivially move constructible or void, and
+ * E is trivially move constructible */
 template <typename T, typename E,
           bool = is_move_constructible_or_void_v<T> && 
                  std::is_move_constructible_v<E>,
@@ -417,8 +452,9 @@ template <typename T, typename E,
                  std::is_trivially_move_constructible_v<E>>
 struct expected_move_ctor_base;
 
-/* Partial specialization for when:
- * T is not move constructible or void, and/or E is not move constructible */
+/* Partial specialization for when
+ * T is neither move constructible nor void, and/or E is not move 
+ * constructible. Delete move ctor */
 template <typename T, typename E>
 struct expected_move_ctor_base<T, E, false, false> 
     : expected_copy_ctor_base<T,E> {
@@ -429,9 +465,11 @@ struct expected_move_ctor_base<T, E, false, false>
     expected_move_ctor_base(expected_move_ctor_base&&) = delete;
 };
 
-/* Partial specialization for when:
+/* Partial specialization for when
  * T is move constructible or void, and E is move constructible,
- * T is not trivially move constructible or void, and/or E is not trivially move constructible */
+ * T is not trivially move constructible or void, and/or E is not 
+ * trivially move constructible. expected should have non-constexpr
+ * move ctor */
 template <typename T, typename E>
 struct expected_move_ctor_base<T, E, true, false>
     : expected_copy_ctor_base<T,E> {
@@ -450,7 +488,8 @@ struct expected_move_ctor_base<T, E, true, false>
 };
 
 /* Partial specialization for when:
- * T is trivially move constructible or void and E is trivially move constructible */
+ * T is trivially move constructible or void and E is trivially move 
+ * constructible. expected should have constexpr move ctor */
 template <typename T, typename E>
 struct expected_move_ctor_base<T, E, true, true>
     : expected_copy_ctor_base<T,E> {
@@ -468,6 +507,10 @@ struct expected_move_ctor_base<T, E, true, true>
     }
 };
 
+/* expeced_interface_base */
+/* Provides functions availabe for all instantiations of expected.
+ * Operations unique to when either T is void or T is non-void are 
+ * provided in derived classes */
 template <typename T, typename E>
 class expected_interface_base : impl::expected_move_ctor_base<T,E> {
     static_assert(!std::is_reference_v<T>, "T must not be reference");
@@ -482,6 +525,7 @@ class expected_interface_base : impl::expected_move_ctor_base<T,E> {
         expected_interface_base(expected_interface_base const&) = default;
         expected_interface_base(expected_interface_base&&) = default;
 
+        /* Conditionally explicit unexpected lvalue ctor */
         template <typename G = E, typename EE = E,
                   typename = std::enable_if_t<std::is_constructible_v<E, G const&>>,
                   typename = std::enable_if_t<std::is_convertible_v<G const&, E>>>
@@ -494,6 +538,7 @@ class expected_interface_base : impl::expected_move_ctor_base<T,E> {
                   >>
         constexpr explicit expected_interface_base(unexpected<G> const&);
 
+        /* Conditionally explicit unexpected rvalue ctor */
         template <typename G = E, typename EE = E,
                   typename = std::enable_if_t<std::is_constructible_v<E, G&&>>,
                   typename = std::enable_if_t<std::is_convertible_v<G&&, E>>>
@@ -514,6 +559,7 @@ class expected_interface_base : impl::expected_move_ctor_base<T,E> {
         constexpr E const& error() const &;
         constexpr E&& error() &&;
         constexpr E const&& error() const &&;
+
     protected:
         template <typename... Args>
         void store(Args&&... args) noexcept;
@@ -600,8 +646,6 @@ template <typename T, typename E>
 constexpr unexpected<E>& expected_interface_base<T,E>::get_unexpect() const {
     return this->unexpect_;
 }
-
-
 } /* namespace impl */
 
 
@@ -1052,6 +1096,5 @@ void swap(vien::unexpected<E1>& x, vien::unexpected<E1>& y) noexcept(noexcept(x.
     x.swap(y);
 }
 }
-
 
 #endif
