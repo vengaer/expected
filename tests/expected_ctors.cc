@@ -49,12 +49,30 @@ TEST_CASE("Rvalue conversion ctor conditionally explicit", "[expected][construct
                                         expected<std::string, double>>);
 }
 
-TEMPLATE_TEST_CASE("unexpected<E> lvalue constructor conditionally explicit", "[expected][unexpected][explicit][constructor]", void, int, double) {
-    REQUIRE(std::is_convertible_v<unexpected<int>, expected<TestType, int>>);
-    REQUIRE(!std::is_convertible_v<unexpected<std::string_view>, 
+TEMPLATE_TEST_CASE("unexpected<E> lvalue ctor conditionally explicit", "[expected][unexpected][explicit][constructor]", void, int, double) {
+    REQUIRE(std::is_convertible_v<unexpected<int> const&, expected<TestType, int>>);
+    REQUIRE(!std::is_convertible_v<unexpected<std::string_view> const&, 
                                    expected<TestType, std::string>>);
-    REQUIRE(is_explicitly_convertible_v<unexpected<std::string_view>, 
+    REQUIRE(is_explicitly_convertible_v<unexpected<std::string_view> const&, 
                                         expected<TestType, std::string>>);
+}
+
+TEMPLATE_TEST_CASE("unexpected<E> rvalue ctor conditionally explicit", "[expected][unexpected][explicit][constructor]", void, int, double) {
+    REQUIRE(std::is_convertible_v<unexpected<int>&&, expected<TestType, int>>);
+    REQUIRE(!std::is_convertible_v<unexpected<std::string_view>&&, 
+                                   expected<TestType, std::string>>);
+    REQUIRE(is_explicitly_convertible_v<unexpected<std::string_view>&&, 
+                                        expected<TestType, std::string>>);
+}
+
+TEST_CASE("unexpected<E> rvalue ctor is nothrow", "[expected][unexpected][nothrow][constructor]") {
+    struct may_throw_t { may_throw_t(int) { }; };
+    struct nothrow_t { nothrow_t(int) noexcept { }; };
+
+    REQUIRE(!std::is_nothrow_constructible_v<expected<std::string, may_throw_t>, 
+                                             unexpected<int>>);
+    REQUIRE(std::is_nothrow_constructible_v<expected<std::string, nothrow_t>, 
+                                            unexpected<int>>);
 }
 
 TEST_CASE("Destructor trivial iff T and E trivially destructible", "[expected][destructor][conditional][trivial]") {
