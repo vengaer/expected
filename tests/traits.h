@@ -16,6 +16,25 @@ struct is_explicitly_convertible<From, To, std::void_t<decltype(static_cast<To>(
 template <typename From, typename To>
 inline bool is_explicitly_convertible_v = is_explicitly_convertible<From, To>::value;
 
+template <typename T, typename = void>
+struct overloaded_for_swapping : std::false_type { };
+
+template <typename T>
+struct overloaded_for_swapping<T, std::void_t<decltype(std::swap(std::declval<T>(), 
+                                                                     std::declval<T>()))>> 
+    : std::true_type { };
+
+template <typename T>
+inline bool constexpr overloaded_for_swapping_v =
+    overloaded_for_swapping<T>::value;
+
 } /* namespace vien */
+
+#if defined __clang__ || defined __clang__
+#define CONSTEXPR_CHECK_AVAILABLE
+#define IS_CONSTEXPR(...) __builtin_constant_p( __VA_ARGS__ )
+#endif
+
+
 
 #endif
