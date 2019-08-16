@@ -1,7 +1,9 @@
 #ifndef EXPECTED_MANUAL_TEST
 #include "catch.hpp"
 #include "expected.h"
+#include "traits.h"
 #include <string>
+#include <string_view>
 #include <type_traits>
 
 using namespace vien;
@@ -18,6 +20,24 @@ TEST_CASE("Not default constructible if T is not default constructible or void",
     };
 
     REQUIRE(!std::is_default_constructible_v<expected<non_default_constructible_t, double>>);
+}
+
+TEST_CASE("Lvalue conversion ctor conditionally explicit", "[constructor][explicit]") {
+    REQUIRE(std::is_convertible_v<expected<int, double> const&, 
+                                  expected<double, double>>);
+    REQUIRE(!std::is_convertible_v<expected<std::string_view, double> const&, 
+                                   expected<std::string, double>>);
+    REQUIRE(is_explicitly_convertible_v<expected<std::string_view, double> const&,
+                                        expected<std::string, double>>);
+}
+
+TEST_CASE("Rvalue conversion ctor conditionally explicit", "[constructor][explicit]") {
+    REQUIRE(std::is_convertible_v<expected<int, double>&&, 
+                                  expected<double, double>>);
+    REQUIRE(!std::is_convertible_v<expected<std::string_view, double>&&, 
+                                   expected<std::string, double>>);
+    REQUIRE(is_explicitly_convertible_v<expected<std::string_view, double>&&,
+                                        expected<std::string, double>>);
 }
 
 TEST_CASE("Destructor trivial iff T and E trivially destructible", "[destructor][conditional][trivial]") {
