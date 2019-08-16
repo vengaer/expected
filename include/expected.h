@@ -482,6 +482,18 @@ class expected_interface_base : impl::expected_move_ctor_base<T,E> {
         expected_interface_base(expected_interface_base const&) = default;
         expected_interface_base(expected_interface_base&&) = default;
 
+        template <typename G = E, typename EE = E,
+                  typename = std::enable_if_t<std::is_constructible_v<E, G const&>>,
+                  typename = std::enable_if_t<std::is_convertible_v<G const&, E>>>
+        constexpr expected_interface_base(unexpected<G> const&);
+
+        template <typename G = E, typename EE = E,
+                  typename = std::enable_if_t<
+                      std::is_constructible_v<E, G const&> &&
+                     !std::is_convertible_v<G const&, E>
+                  >>
+        constexpr explicit expected_interface_base(unexpected<G> const&);
+
         constexpr explicit operator bool() const noexcept;
 
         constexpr E& error() &;
@@ -546,6 +558,18 @@ constexpr U const& expected_interface_base<T,E>::get_val() const {
 template <typename T, typename E>
 constexpr unexpected<E>& expected_interface_base<T,E>::get_unexpect() const {
     return this->unexpect_;
+}
+
+template <typename T, typename E>
+template <typename G, typename, typename, typename>
+constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G> const& e) {
+    this->store(unexpect, e);
+}
+
+template <typename T, typename E>
+template <typename G, typename, typename>
+constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G> const& e) {
+    this->store(unexpect, e);
 }
 
 
