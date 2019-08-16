@@ -494,6 +494,20 @@ class expected_interface_base : impl::expected_move_ctor_base<T,E> {
                   >>
         constexpr explicit expected_interface_base(unexpected<G> const&);
 
+        template <typename G = E, typename EE = E,
+                  typename = std::enable_if_t<std::is_constructible_v<E, G&&>>,
+                  typename = std::enable_if_t<std::is_convertible_v<G&&, E>>>
+        constexpr expected_interface_base(unexpected<G>&&) 
+                        noexcept(std::is_nothrow_constructible_v<E, G&&>);
+
+        template <typename G = E, typename EE = E,
+                  typename = std::enable_if_t<
+                      std::is_constructible_v<E, G&&> &&
+                     !std::is_convertible_v<G&&, E>
+                  >>
+        constexpr explicit expected_interface_base(unexpected<G>&&)
+                        noexcept(std::is_nothrow_constructible_v<E, G&&>);
+
         constexpr explicit operator bool() const noexcept;
 
         constexpr E& error() &;
@@ -512,6 +526,33 @@ class expected_interface_base : impl::expected_move_ctor_base<T,E> {
 
         constexpr unexpected<E>& get_unexpect() const;
 };
+
+template <typename T, typename E>
+template <typename G, typename, typename, typename>
+constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G> const& e) {
+    this->store(unexpect, e);
+}
+
+template <typename T, typename E>
+template <typename G, typename, typename>
+constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G> const& e) {
+    this->store(unexpect, e);
+}
+
+template <typename T, typename E>
+template <typename G, typename, typename, typename>
+constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G>&& e) 
+                noexcept(std::is_nothrow_constructible_v<E, G&&>) {
+    this->store(unexpect, std::move(e));
+}
+
+template <typename T, typename E>
+template <typename G, typename, typename>
+constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G>&& e)
+                noexcept(std::is_nothrow_constructible_v<E, G&&>) {
+    this->store(unexpect, std::move(e));
+}
+
 
 template <typename T, typename E>
 constexpr expected_interface_base<T,E>::operator bool() const noexcept {
@@ -558,18 +599,6 @@ constexpr U const& expected_interface_base<T,E>::get_val() const {
 template <typename T, typename E>
 constexpr unexpected<E>& expected_interface_base<T,E>::get_unexpect() const {
     return this->unexpect_;
-}
-
-template <typename T, typename E>
-template <typename G, typename, typename, typename>
-constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G> const& e) {
-    this->store(unexpect, e);
-}
-
-template <typename T, typename E>
-template <typename G, typename, typename>
-constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G> const& e) {
-    this->store(unexpect, e);
 }
 
 
