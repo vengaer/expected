@@ -30,7 +30,7 @@ inline bool constexpr overloaded_for_swapping_v =
 
 } /* namespace vien */
 
-#if defined __clang__ || defined __clang__
+#if defined __clang__ || defined __GNUC__
 #define CONSTEXPR_CHECK_AVAILABLE
 #define IS_CONSTEXPR(...) __builtin_constant_p( __VA_ARGS__ )
 #endif
