@@ -8,7 +8,7 @@
 
 using namespace vien;
 
-TEST_CASE("Lvalue conversion ctor conditionally explicit", "[unexpected][conversion][explicit]") {
+TEST_CASE("unexpected lvalue conversion ctor conditionally explicit", "[unexpected][conversion][explicit]") {
     REQUIRE(std::is_convertible_v<unexpected<char const*> const&,
                                   unexpected<std::string>>);
     REQUIRE(!std::is_convertible_v<unexpected<std::string_view> const&,
@@ -17,7 +17,7 @@ TEST_CASE("Lvalue conversion ctor conditionally explicit", "[unexpected][convers
                                         unexpected<std::string>>);
 }
 
-TEST_CASE("Rvalue conversion ctor conditionally explicit", "[unexpected][conversion][explicit]") {
+TEST_CASE("unexpected rvalue conversion ctor conditionally explicit", "[unexpected][conversion][explicit]") {
     REQUIRE(std::is_convertible_v<unexpected<char const*>&&,
                                   unexpected<std::string>>);
     REQUIRE(!std::is_convertible_v<unexpected<std::string_view>&&,
@@ -41,6 +41,21 @@ TEST_CASE("Comparisons type agnostic", "[unexpected][operator==][operator!=]") {
 
     REQUIRE(u1 != u2);
     REQUIRE(u2 == u3);
+}
+
+TEST_CASE("std::swap specialization", "[unexpected][swap]") {
+    unexpected<int> u1{2};
+    unexpected<int> u2{5};
+    std::swap(u1, u2);
+    REQUIRE(u1.value() == 5);
+    REQUIRE(u2.value() == 2);
+}
+
+TEST_CASE("std::swap not availble if E not swappable", "[unexpected][swap]") {
+    struct non_swappable_t {
+        non_swappable_t& operator=(non_swappable_t&&) = delete;
+    };
+    REQUIRE(!overloaded_for_swapping_v<unexpected<non_swappable_t>>);
 }
 
 #endif
