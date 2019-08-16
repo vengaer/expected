@@ -8,12 +8,7 @@
 #include <utility>
 
 namespace vien {
-
-struct in_place_t {
-    explicit in_place_t() = default;
-};
-
-inline constexpr in_place_t in_place{};
+using in_place_t = std::in_place_t;
 
 struct unexpect_t {
     explicit unexpect_t() = default;
@@ -34,6 +29,12 @@ class bad_expected_access;
 
 
 namespace impl {
+
+template <typename T>
+using remove_cvref = std::remove_cv<std::remove_reference_t<T>>;
+
+template <typename T>
+using remove_cvref_t = typename remove_cvref<T>::type;
 
 template <typename T>
 struct is_default_constructible_or_void 
@@ -174,6 +175,28 @@ struct expected_enable_non_explicit_move_conversion<void, E, void, G>
 template <typename T, typename E, typename U, typename G>
 inline bool constexpr expected_enable_non_explicit_move_conversion_v =
     expected_enable_non_explicit_move_conversion<T,E,U,G>::value;
+
+template <typename T, typename E, typename U>
+struct expected_enable_forwarding_ref_ctor
+    : std::bool_constant<std::is_constructible_v<T, U&&> &&
+                        !std::is_same_v<remove_cvref_t<U>, in_place_t> &&
+                        !std::is_same_v<expected<T, E>, remove_cvref_t<U>> &&
+                        !std::is_same_v<unexpected<E>, remove_cvref_t<U>>> { };
+
+template <typename T, typename E, typename U>
+inline bool constexpr expected_enable_forwarding_ref_ctor_v =
+    expected_enable_forwarding_ref_ctor<T,E,U>::value;
+
+template <typename T, typename U>
+struct expected_enable_non_explicit_forwarding_ref_ctor
+    : std::bool_constant<std::is_convertible_v<U&&, T>> { };
+
+template <typename T, typename U>
+inline bool constexpr expected_enable_non_explicit_forwarding_ref_ctor_v =
+    expected_enable_non_explicit_forwarding_ref_ctor<T,U>::value;
+
+
+/* expected hierarchy */
 
 template <typename T, typename E, 
           bool = std::is_trivially_destructible_v<T>, 
@@ -545,6 +568,24 @@ class expected : public impl::expected_interface_base<T,E> {
         expected(expected const&) = default;
         expected(expected&&) = default;
 
+        /* Conditionally explicit perfect forwarding conversion ctor */
+        template <typename U = T, typename TT = T, typename EE = E,
+                  typename = std::enable_if_t<
+                      impl::expected_enable_forwarding_ref_ctor_v<TT, EE, U>
+                  >,
+                  typename = std::enable_if_t<
+                      impl::expected_enable_non_explicit_forwarding_ref_ctor_v<TT, U>
+                  >>
+        constexpr expected(U&&);
+
+        template <typename U = T, typename TT = T, typename EE = E,
+                  typename = std::enable_if_t<
+                      impl::expected_enable_forwarding_ref_ctor_v<TT, EE, U> &&
+                     !impl::expected_enable_non_explicit_forwarding_ref_ctor_v<TT, U>
+                  >>
+        constexpr explicit expected(U&&);
+                  
+
         /* Conditionally explicit conversion constructors */
         template <typename U, typename G, typename TT = T, typename EE = E,
                   typename = std::enable_if_t<
@@ -583,6 +624,18 @@ class expected : public impl::expected_interface_base<T,E> {
         constexpr T&& value() &&;
         constexpr T const&& value() const &&;
 };
+
+template <typename T, typename E>
+template <typename U, typename, typename, typename, typename>
+constexpr expected<T,E>::expected(U&& v) {
+    this->store(std::forward<U>(v));
+}
+
+template <typename T, typename E>
+template <typename U, typename, typename, typename>
+constexpr expected<T,E>::expected(U&& v) {
+    this->store(std::forward<U>(v));
+}
 
 template <typename T, typename E>
 template <typename U, typename G, typename, typename, typename, typename>
