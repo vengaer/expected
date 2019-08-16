@@ -49,6 +49,14 @@ TEST_CASE("Rvalue conversion ctor conditionally explicit", "[expected][construct
                                         expected<std::string, double>>);
 }
 
+TEMPLATE_TEST_CASE("unexpected<E> lvalue constructor conditionally explicit", "[expected][unexpected][explicit][constructor]", void, int, double) {
+    REQUIRE(std::is_convertible_v<unexpected<int>, expected<TestType, int>>);
+    REQUIRE(!std::is_convertible_v<unexpected<std::string_view>, 
+                                   expected<TestType, std::string>>);
+    REQUIRE(is_explicitly_convertible_v<unexpected<std::string_view>, 
+                                        expected<TestType, std::string>>);
+}
+
 TEST_CASE("Destructor trivial iff T and E trivially destructible", "[expected][destructor][conditional][trivial]") {
     REQUIRE(std::is_trivially_destructible_v<expected<int, double>>);
     REQUIRE(!std::is_trivially_destructible_v<expected<std::string, double>>);
