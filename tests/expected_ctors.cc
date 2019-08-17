@@ -118,6 +118,22 @@ TEMPLATE_TEST_CASE("Copy construction when bool(*this) == false", "[expected][co
     REQUIRE(e1.error() == e2.error());
 }
 
+TEST_CASE("Move construction when bool(*this) == true", "[expected][move]") {
+    int constexpr i = 1;
+    expected<int, double> e1{i};
+    expected e2{std::move(e1)};
+    REQUIRE(i == e2.value());
+}
+
+TEMPLATE_TEST_CASE("Move construction when bool(*this) == false", "[expected][move]", int, void) {
+    double constexpr d = 1.0;
+    unexpected<double> u(d);
+    expected<TestType, double> e1(std::move(u));
+    expected e2(std::move(e1));
+    REQUIRE( THROWS(e2.value(), bad_expected_access<double>) );
+    REQUIRE(e2.error() == d);
+}
+
 TEST_CASE("in_place_t variadic ctor not availble if T == void and sizeof...(Args) > 0", "[expected][constructor][in_place_t]") {
     REQUIRE(std::is_constructible_v<expected<void, int>, in_place_t>);
     REQUIRE(!std::is_constructible_v<expected<void, int>, in_place_t, int>);
