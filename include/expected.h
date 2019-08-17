@@ -569,6 +569,13 @@ class expected_interface_base : impl::expected_move_ctor_base<T,E> {
         constexpr explicit expected_interface_base(unexpected<G>&&)
                         noexcept(std::is_nothrow_constructible_v<E, G&&>);
 
+        template <typename... Args, 
+                  typename = std::enable_if_t<
+                      std::is_constructible_v<E, Args&&...>
+                  >>
+        constexpr explicit expected_interface_base(unexpect_t, Args&&... args);
+
+
         constexpr explicit operator bool() const noexcept;
 
         constexpr E& error() &;
@@ -586,7 +593,8 @@ class expected_interface_base : impl::expected_move_ctor_base<T,E> {
         template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
         constexpr U const& get_val() const;
 
-        constexpr unexpected<E>& get_unexpect() const;
+        constexpr unexpected<E>& get_unexpect();
+        constexpr unexpected<E> const& get_unexpect() const;
 };
 
 template <typename T, typename E>
@@ -613,6 +621,12 @@ template <typename G, typename, typename>
 constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G>&& e)
                 noexcept(std::is_nothrow_constructible_v<E, G&&>) {
     this->store(unexpect, std::move(e));
+}
+
+template <typename T, typename E>
+template <typename... Args, typename>
+constexpr expected_interface_base<T,E>::expected_interface_base(unexpect_t, Args&&... args) {
+    this->store(unexpect, std::forward<Args>(args)...);
 }
 
 
@@ -658,10 +672,17 @@ template <typename U, typename>
 constexpr U const& expected_interface_base<T,E>::get_val() const {
     return this->val_;
 }
+
 template <typename T, typename E>
-constexpr unexpected<E>& expected_interface_base<T,E>::get_unexpect() const {
-    return this->unexpect_;
+constexpr unexpected<E>& expected_interface_base<T,E>::get_unexpect() {
+    return base_t::get_unexpect();;
 }
+
+template <typename T, typename E>
+constexpr unexpected<E> const& expected_interface_base<T,E>::get_unexpect() const {
+    return base_t::get_unexpect();
+}
+
 } /* namespace impl */
 
 
