@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <vector>
 
 using namespace vien;
 
@@ -144,10 +145,18 @@ TEST_CASE("in_place_t variadic ctor not available if T != void and is_constructi
     REQUIRE(!std::is_constructible_v<expected<int, int>, in_place_t, std::string>);
 }
 
-TEST_CASE("unexpect_t variadic ctor initializes s.t. bool(*this) == false", "[expected][constructor][in_place_t]") {
+TEST_CASE("unexpect_t variadic ctor initializes s.t. bool(*this) == false", "[expected][constructor][unexpect_t]") {
     expected<int, double> e(unexpect, 1);
     REQUIRE( THROWS(e.value(), bad_expected_access<double>) );
     REQUIRE(e.error() == 1);
+    REQUIRE(!bool(e));
+}
+
+TEST_CASE("unexpect_t initializer_list variadic ctor initializes s.t. bool(*this) == false", "[expected][constructor][unexpect_t]") {
+    expected<int, std::vector<int>> e(unexpect, {1,2,3});
+    std::vector const v{1,2,3};
+    REQUIRE( THROWS(e.value(), bad_expected_access<std::vector<int>>) );
+    REQUIRE(e.error() == v);
     REQUIRE(!bool(e));
 }
 
