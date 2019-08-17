@@ -1,6 +1,7 @@
 #ifndef EXPECTED_TRAITS_H
 #define EXPECTED_TRAITS_H
 
+#include <functional>
 #include <type_traits>
 #include <utility>
 
@@ -34,6 +35,24 @@ inline bool constexpr overloaded_for_swapping_v =
 #define CONSTEXPR_CHECK_AVAILABLE
 #define IS_CONSTEXPR(...) __builtin_constant_p( __VA_ARGS__ )
 #endif
+
+#define THROWS(expr, except)  \
+std::invoke([=]() -> bool { \
+    try { \
+        return [=]() -> bool { \
+            try { \
+                expr \
+            } \
+            catch(except) { \
+                return true; \
+            } \
+            return false; \
+        }(); \
+    } \
+    catch(...) { \
+        return false; \
+    } \
+})
 
 
 
