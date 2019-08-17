@@ -43,7 +43,7 @@ std::invoke([=]() -> bool { \
             try { \
                 expr; \
             } \
-            catch(except) { \
+            catch(except&) { \
                 return true; \
             } \
             return false; \
