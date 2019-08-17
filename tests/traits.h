@@ -11,7 +11,7 @@ template <typename From, typename To, typename = void>
 struct is_explicitly_convertible : std::false_type { };
 
 template <typename From, typename To>
-struct is_explicitly_convertible<From, To, std::void_t<decltype(static_cast<To>(std::declval<From>()))>> 
+struct is_explicitly_convertible<From, To, std::void_t<decltype(To(std::declval<From>()))>> 
     : std::true_type { };
 
 template <typename From, typename To>
@@ -41,7 +41,7 @@ std::invoke([=]() -> bool { \
     try { \
         return [=]() -> bool { \
             try { \
-                expr \
+                expr; \
             } \
             catch(except) { \
                 return true; \
