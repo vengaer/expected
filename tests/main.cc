@@ -19,11 +19,10 @@ int main() {
     PRINT_BOOL_EXPR(
         THROWS(throw 20.0;, int)
     )
+    PRINT_BOOL_EXPR(
+        std::is_constructible_v<std::vector<int>, std::initializer_list<int>>
+    )
     
-    expected<double, int> e;
-    expected<int, int> e1(e);
-    expected<int, int> e2(std::move(e));
-    //e.val_ = expected(10);
 
     return 0;
 }
