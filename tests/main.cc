@@ -16,6 +16,9 @@ int main() {
     PRINT_BOOL_EXPR(
         std::is_convertible_v<expected<int, double>, expected<double, double>>
     )
+    PRINT_BOOL_EXPR(
+        THROWS(throw 20.0;, int)
+    )
     
     expected<double, int> e;
     expected<int, int> e1(e);
