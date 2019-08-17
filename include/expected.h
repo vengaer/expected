@@ -573,7 +573,14 @@ class expected_interface_base : impl::expected_move_ctor_base<T,E> {
                   typename = std::enable_if_t<
                       std::is_constructible_v<E, Args&&...>
                   >>
-        constexpr explicit expected_interface_base(unexpect_t, Args&&... args);
+        constexpr explicit expected_interface_base(unexpect_t, Args&&...);
+
+        template <typename U, typename... Args,
+                  typename = std::enable_if_t<
+                      std::is_constructible_v<E, std::initializer_list<U>&, Args&&...>
+                  >>
+        constexpr explicit
+            expected_interface_base(unexpect_t, std::initializer_list<U>, Args&&...);
 
 
         constexpr explicit operator bool() const noexcept;
@@ -627,6 +634,14 @@ template <typename T, typename E>
 template <typename... Args, typename>
 constexpr expected_interface_base<T,E>::expected_interface_base(unexpect_t, Args&&... args) {
     this->store(unexpect, std::forward<Args>(args)...);
+}
+
+template <typename T, typename E>
+template <typename U, typename... Args, typename>
+constexpr expected_interface_base<T,E>::expected_interface_base(unexpect_t,
+                std::initializer_list<U> il, Args&&... args) {
+
+    this->store(unexpect, il, std::forward<Args>(args)...);
 }
 
 
