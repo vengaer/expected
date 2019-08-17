@@ -195,6 +195,24 @@ template <typename T, typename U>
 inline bool constexpr expected_enable_non_explicit_forwarding_ref_ctor_v =
     expected_enable_non_explicit_forwarding_ref_ctor<T,U>::value;
 
+template <typename T, typename E>
+struct expected_enable_copy_assignment
+    : std::bool_constant<std::is_copy_assignable_v<T> &&
+                         std::is_copy_constructible_v<T> &&
+                         std::is_copy_assignable_v<E> &&
+                         std::is_copy_constructible_v<E> &&
+                        (std::is_nothrow_move_constructible_v<T> ||
+                         std::is_nothrow_move_constructible_v<E>)> { };
+
+template <typename E>
+struct expected_enable_copy_assignment<void, E>
+    : std::bool_constant<std::is_copy_assignable_v<E> &&
+                         std::is_copy_constructible_v<E>> { };
+
+template <typename T, typename E>
+inline bool constexpr expected_enable_copy_assignment_v =
+    expected_enable_copy_assignment<T,E>::value;
+                            
 
 /* expected hierarchy */
 
@@ -344,13 +362,91 @@ struct expected_construction_base : expected_base<T,E> {
         this->has_val_ = false;
     }
 
-    constexpr unexpected<E>& get_unexpect() {
+    constexpr T& internal_get_value() & {
+        return this->val_;
+    }
+
+    constexpr T const& internal_get_value() const & {
+        return this->val_;
+    }
+
+    constexpr T&& internal_get_value() && {
+        return std::move(this->val_);
+    }
+
+    constexpr T const&& internal_get_value() const && {
+        return std::move(this->val_);
+    }
+
+    constexpr unexpected<E>& internal_get_unexpect() & {
         return this->unexpect_;
     }
 
-    constexpr unexpected<E> const& get_unexpect() const {
+    constexpr unexpected<E> const& internal_get_unexpect() const & {
         return this->unexpect_;
     }
+
+    constexpr unexpected<E>&& internal_get_unexpect() && {
+        return std::move(this->unexpect_);
+    }
+
+    constexpr unexpected<E> const&& internal_get_unexpect() const && {
+        return std::move(this->unexpect_);
+    }
+
+    constexpr bool has_value() const {
+        return this->has_val_;
+    }
+
+    /* Called only when T is nothrow copy constructible */
+    void internal_value_type_copy_nothrow_copy_assign(expected_construction_base const& rhs) 
+        noexcept(std::is_nothrow_copy_assignable_v<T>) {
+        this->internal_get_unexpect().~unexpected<E>();
+        this->store(rhs.internal_get_value());
+    }
+
+    void internal_value_type_move_nothrow_copy_assign(expected_construction_base const& rhs) {
+        T tmp = rhs.internal_get_value();
+        this->internal_get_unexpect().~unexpected<E>();
+        this->store(std::move(tmp));
+    }
+
+    void internal_value_type_copy_assign(expected_construction_base const& rhs) {
+        unexpected<E> tmp = unexpect(this->internal_get_unexpect().value());
+        this->internal_get_unexpect().~unexpected<E>();
+        try {
+            this->store(rhs.internal_get_value());
+        }
+        catch(...) {
+            this->store(unexpect, std::move(tmp));
+            throw;
+        }
+    }
+
+    void internal_error_type_copy_nothrow_copy_assign(expected_construction_base const& rhs) noexcept {
+        this->internal_get_value().~T();
+        this->store(unexpect, unexpected(rhs.internal_get_unexpect().value()));
+    }
+
+    void internal_error_type_move_nothrow_copy_assign(expected_construction_base const& rhs) {
+        unexpected<E> tmp = unexpected(rhs.internal_get_unexpect().value());
+        this->internal_get_value().~T();
+        this->store(unexpect, std::move(tmp));
+    }
+
+    void internal_error_type_copy_assign(expected_construction_base const& rhs) {
+        T tmp = this->internal_get_value();
+        this->internal_get_value().~T();
+        try {
+            this->store(unexpect, unexpect(rhs.internal_get_unexpect().value()));
+        }
+        catch(...) {
+            this->store(std::move(tmp));
+            throw;
+        }
+    }
+
+    
 };
 
 /* T is void. Provides utility functions for placement newing 
@@ -371,12 +467,43 @@ struct expected_construction_base<void, E> : expected_base<void,E> {
         this->has_val_ = false;
     }
 
-    constexpr unexpected<E>& get_unexpect() {
+    constexpr unexpected<E>& internal_get_unexpect() & {
         return this->unexpect_;
     }
 
-    constexpr unexpected<E> const& get_unexpect() const {
+    constexpr unexpected<E> const& internal_get_unexpect() const & {
         return this->unexpect_;
+    }
+
+    constexpr unexpected<E>&& internal_get_unexpect() && {
+        return std::move(this->unexpect_);
+    }
+
+    constexpr unexpected<E> const&& internal_get_unexpect() const && {
+        return std::move(this->unexpect_);
+    }
+
+    constexpr bool has_value() const {
+        return this->has_val_;
+    }
+
+    void internal_copy_assign(expected_construction_base const& rhs) noexcept {
+
+        if(this->has_value() && rhs.has_value())
+            this->store();
+
+        else if(!this->has_value() && !rhs.has_value())
+            this->store(unexpect, rhs.internal_get_unexpect().value());
+
+        else if(this->has_value() && !rhs.has_value()) {
+            /* If unexpected<E> ctor throws, this->has_val_ is not changed */
+            this->store(unexpect, rhs.internal_get_unexpect().value());
+        }
+
+        else {
+            this->internal_get_unexpect().~unexpected<E>();
+            this->store();
+        }
     }
 };
 
@@ -435,7 +562,7 @@ struct expected_copy_ctor_base<T, E, true, false>
         if(rhs.has_val_)
             this->store(rhs.val_);
         else
-            this->store(unexpect, unexpected(rhs.get_unexpect().value()));
+            this->store(unexpect, unexpected(rhs.internal_get_unexpect().value()));
     }
 };
 
@@ -452,7 +579,7 @@ struct expected_copy_ctor_base<T, E, true, true>
         if(rhs.has_val_)
             this->store(rhs.val_);
         else
-            this->store(unexpect, unexpected(rhs.get_unexpect().value()));
+            this->store(unexpect, unexpected(rhs.internal_get_unexpect().value()));
     }
 };
 
@@ -499,7 +626,7 @@ struct expected_move_ctor_base<T, E, true, false>
         if(rhs.has_val_)
             this->store(std::move(rhs.val_));
         else
-            this->store(unexpect, std::move(rhs.get_unexpect().value()));
+            this->store(unexpect, std::move(rhs.internal_get_unexpect().value()));
     }
 };
 
@@ -519,27 +646,371 @@ struct expected_move_ctor_base<T, E, true, true>
         if(rhs.has_val_)
             this->store(std::move(rhs.val_));
         else
-            this->store(unexpect, std::move(rhs.get_unexpect().value()));
+            this->store(unexpect, std::move(rhs.internal_get_unexpect().value()));
     }
 };
 
-/* expeced_interface_base */
+/* expected_copy_assign_base */
+template <typename T, typename E,
+          bool = expected_enable_copy_assignment_v<T,E>,
+          bool = std::is_nothrow_copy_constructible_v<T>,
+          bool = std::is_nothrow_move_constructible_v<T>,
+          bool = std::is_nothrow_copy_constructible_v<E>,
+          bool = std::is_nothrow_move_constructible_v<E>>
+struct expected_copy_assign_base;
+
+/* T is not void, conditions for copy assignment not met, delete */
+template <typename T, typename E, bool B1, bool B2, bool B3, bool B4>
+struct expected_copy_assign_base<T, E, false, B1, B2, B3, B4> 
+    : expected_move_ctor_base<T,E> {
+
+    using expected_move_ctor_base<T,E>::expected_move_ctor_base;
+    expected_copy_assign_base() = default;
+    expected_copy_assign_base(expected_copy_assign_base const&) = default;
+    expected_copy_assign_base(expected_copy_assign_base&&) = default;
+
+    expected_copy_assign_base& operator=(expected_copy_assign_base const&) = delete;
+};
+
+/* T is not void. Copy assignment should be enabled. T is neither nothrow copy 
+ * constructible nor nothrow move constructible. E is neither nothrow copy
+ * constructible nor nothrow move constructible. */
+template <typename T, typename E>
+struct expected_copy_assign_base<T, E, true, false, false, false, false>
+    : expected_move_ctor_base<T,E> {
+    using expected_move_ctor_base<T,E>::expected_move_ctor_base;
+    expected_copy_assign_base() = default;
+    expected_copy_assign_base(expected_copy_assign_base const&) = default;
+    expected_copy_assign_base(expected_copy_assign_base&&) = default;
+
+    expected_copy_assign_base& operator=(expected_copy_assign_base const& rhs) {
+
+        if(this->has_value() && rhs.has_value()) 
+            this->store(rhs.internal_get_value());
+
+        else if(!this->has_value() && !rhs.has_value())
+            this->store(unexpect, rhs.internal_get_unexpect().value());
+
+        else if(this->has_value() && !rhs.has_value())
+            this->internal_error_type_copy_assign(rhs);
+
+        else
+            this->internal_value_type_copy_assign(rhs);
+
+        return *this;
+    }
+};
+
+
+/* T is not void. Copy assignment should be enabled. T is nothrow copy constructible 
+ * => it doesn't matter whether it is nothrow move constructible. E is neither 
+ * nothrow copy constructible nor nothrow move constructible. */
+template <typename T, typename E, bool B>
+struct expected_copy_assign_base<T, E, true, true, B, false, false>
+    : expected_move_ctor_base<T,E> {
+    using expected_move_ctor_base<T,E>::expected_move_ctor_base;
+    expected_copy_assign_base() = default;
+    expected_copy_assign_base(expected_copy_assign_base const&) = default;
+    expected_copy_assign_base(expected_copy_assign_base&&) = default;
+
+    /* T already guaranteed to be nothrow copy constructible */
+    expected_copy_assign_base& operator=(expected_copy_assign_base const& rhs) 
+            noexcept(std::is_nothrow_copy_assignable_v<T>) {
+
+        if(this->has_value() && rhs.has_value()) 
+            this->store(rhs.internal_get_value());
+
+        else if(!this->has_value() && !rhs.has_value())
+            this->store(unexpect, rhs.internal_get_unexpect().value());
+
+        else if(this->has_value() && !rhs.has_value())
+            this->internal_error_type_copy_assign(rhs);
+
+        else
+            this->internal_value_type_copy_nothrow_copy_assign(rhs);
+
+        return *this;
+    }
+};
+
+/* T is not void. Copy assignment should be enabled. T is neither nothrow copy 
+ * constructible nor nothrow move constructible. E is nothrow copy constructible 
+ * => it doesn't matter whether it is nothrow move constructible. */
+template <typename T, typename E, bool B>
+struct expected_copy_assign_base<T, E, true, false, false, true, B>
+    : expected_move_ctor_base<T,E> {
+    using expected_move_ctor_base<T,E>::expected_move_ctor_base;
+    expected_copy_assign_base() = default;
+    expected_copy_assign_base(expected_copy_assign_base const&) = default;
+    expected_copy_assign_base(expected_copy_assign_base&&) = default;
+
+    expected_copy_assign_base& operator=(expected_copy_assign_base const& rhs) {
+
+        if(this->has_value() && rhs.has_value()) 
+            this->store(rhs.internal_get_value());
+
+        else if(!this->has_value() && !rhs.has_value())
+            this->store(unexpect, rhs.internal_get_unexpect().value());
+
+        else if(this->has_value() && !rhs.has_value())
+            this->internal_error_type_copy_nothrow_copy_assign(rhs);
+
+        else
+            this->internal_value_type_copy_assign(rhs);
+
+        return *this;
+    }
+};
+
+/* T is not void. Copy assignment should be enabled. T is not nothrow copy 
+ * constructible but is nothrow move constructible. E is neither nothrow copy
+ * constructible nor nothrow move constructible. */
+template <typename T, typename E>
+struct expected_copy_assign_base<T, E, true, false, true, false, false>
+    : expected_move_ctor_base<T,E> {
+    using expected_move_ctor_base<T,E>::expected_move_ctor_base;
+    expected_copy_assign_base() = default;
+    expected_copy_assign_base(expected_copy_assign_base const&) = default;
+    expected_copy_assign_base(expected_copy_assign_base&&) = default;
+
+    expected_copy_assign_base& operator=(expected_copy_assign_base const& rhs) {
+
+        if(this->has_value() && rhs.has_value()) 
+            this->store(rhs.internal_get_value());
+
+        else if(!this->has_value() && !rhs.has_value())
+            this->store(unexpect, rhs.internal_get_unexpect().value());
+
+        else if(this->has_value() && !rhs.has_value())
+            this->internal_error_type_copy_assign(rhs);
+
+        else
+            this->internal_value_type_move_nothrow_copy_assign(rhs);
+
+        return *this;
+    }
+};
+
+/* T is not void. Copy assignment should be enabled. T is neither nothrow copy 
+ * constructible nor nothrow move constructible. E is not nothrow copy constructible 
+ * but is nothrow move constructible. */
+template <typename T, typename E>
+struct expected_copy_assign_base<T, E, true, false, false, false, true>
+    : expected_move_ctor_base<T,E> {
+    using expected_move_ctor_base<T,E>::expected_move_ctor_base;
+    expected_copy_assign_base() = default;
+    expected_copy_assign_base(expected_copy_assign_base const&) = default;
+    expected_copy_assign_base(expected_copy_assign_base&&) = default;
+
+    expected_copy_assign_base& operator=(expected_copy_assign_base const& rhs) {
+
+        if(this->has_value() && rhs.has_value()) 
+            this->store(rhs.internal_get_value());
+
+        else if(!this->has_value() && !rhs.has_value())
+            this->store(unexpect, rhs.internal_get_unexpect().value());
+
+        else if(this->has_value() && !rhs.has_value())
+            this->internal_error_type_move_nothrow_copy_assign(rhs);
+
+        else
+            this->internal_value_type_copy_assign(rhs);
+
+        return *this;
+    }
+};
+
+/* T is not void. Copy assignment should be enabled. T is nothrow copy constructible 
+ * => doesn't matter if T is nothrow move constructible. E is nothrow copy constructible 
+ * => doesn't matter if E is nothrow move constructible. */
+template <typename T, typename E, bool B1, bool B2>
+struct expected_copy_assign_base<T, E, true, true, B1, true, B2>
+    : expected_move_ctor_base<T,E> {
+    using expected_move_ctor_base<T,E>::expected_move_ctor_base;
+    expected_copy_assign_base() = default;
+    expected_copy_assign_base(expected_copy_assign_base const&) = default;
+    expected_copy_assign_base(expected_copy_assign_base&&) = default;
+
+    expected_copy_assign_base& operator=(expected_copy_assign_base const& rhs) 
+            noexcept(std::is_nothrow_copy_assignable_v<T>) {
+
+        if(this->has_value() && rhs.has_value()) 
+            this->store(rhs.internal_get_value());
+
+        else if(!this->has_value() && !rhs.has_value())
+            this->store(unexpect, rhs.internal_get_unexpect().value());
+
+        else if(this->has_value() && !rhs.has_value())
+            this->internal_error_type_copy_nothrow_copy_assign(rhs);
+
+        else
+            this->internal_value_type_copy_nothrow_copy_assign(rhs);
+
+        return *this;
+    }
+};
+
+/* T is not void. Copy assignment should be enabled. T is not nothrow copy 
+ * constructible but is nothrow move constructible. E is nothrow copy constructible 
+ * => doesn't matter if E is nothrow move constructible. */
+template <typename T, typename E, bool B>
+struct expected_copy_assign_base<T, E, true, false, true, true, B>
+    : expected_move_ctor_base<T,E> {
+    using expected_move_ctor_base<T,E>::expected_move_ctor_base;
+    expected_copy_assign_base() = default;
+    expected_copy_assign_base(expected_copy_assign_base const&) = default;
+    expected_copy_assign_base(expected_copy_assign_base&&) = default;
+
+    expected_copy_assign_base& operator=(expected_copy_assign_base const& rhs) {
+
+        if(this->has_value() && rhs.has_value()) 
+            this->store(rhs.internal_get_value());
+
+        else if(!this->has_value() && !rhs.has_value())
+            this->store(unexpect, rhs.internal_get_unexpect().value());
+
+        else if(this->has_value() && !rhs.has_value())
+            this->internal_error_type_copy_nothrow_copy_assign(rhs);
+
+        else
+            this->internal_value_type_move_nothrow_copy_assign(rhs);
+
+        return *this;
+    }
+};
+
+/* T is not void. Copy assignment should be enabled. T is nothrow copy constructible 
+ * => doesn't matter if T is nothrow move constructible. E is not nothrow copy
+ * constructible but is nothrow move constructible. */
+template <typename T, typename E, bool B>
+struct expected_copy_assign_base<T, E, true, true, B, false, true>
+    : expected_move_ctor_base<T,E> {
+    using expected_move_ctor_base<T,E>::expected_move_ctor_base;
+    expected_copy_assign_base() = default;
+    expected_copy_assign_base(expected_copy_assign_base const&) = default;
+    expected_copy_assign_base(expected_copy_assign_base&&) = default;
+
+    expected_copy_assign_base& operator=(expected_copy_assign_base const& rhs) 
+            noexcept(std::is_nothrow_copy_assignable_v<T>) {
+
+        if(this->has_value() && rhs.has_value()) 
+            this->store(rhs.internal_get_value());
+
+        else if(!this->has_value() && !rhs.has_value())
+            this->store(unexpect, rhs.internal_get_unexpect().value());
+
+        else if(this->has_value() && !rhs.has_value())
+            this->internal_error_type_move_nothrow_copy_assign(rhs);
+
+        else
+            this->internal_value_type_copy_nothrow_copy_assign(rhs);
+
+        return *this;
+    }
+};
+
+/* T is not void. Copy assignment should be enabled. T is not nothrow copy 
+ * constructible but is nothrow move constructible. E is not nothrow copy
+ * constructible but is nothrow move constructible. */
+template <typename T, typename E>
+struct expected_copy_assign_base<T, E, true, false, true, false, true>
+    : expected_move_ctor_base<T,E> {
+    using expected_move_ctor_base<T,E>::expected_move_ctor_base;
+    expected_copy_assign_base() = default;
+    expected_copy_assign_base(expected_copy_assign_base const&) = default;
+    expected_copy_assign_base(expected_copy_assign_base&&) = default;
+
+    expected_copy_assign_base& operator=(expected_copy_assign_base const& rhs) {
+
+        if(this->has_value() && rhs.has_value()) 
+            this->store(rhs.internal_get_value());
+
+        else if(!this->has_value() && !rhs.has_value())
+            this->store(unexpect, rhs.internal_get_unexpect().value());
+
+        else if(this->has_value() && !rhs.has_value())
+            this->internal_error_type_move_nothrow_copy_assign(rhs);
+
+        else
+            this->internal_value_type_move_nothrow_copy_assign(rhs);
+
+        return *this;
+    }
+};
+
+/* T is void. std::is_nothrow_copy_constructible_v<void> is always false
+ * and std::is_nothrow_move_constructible_v<void> is always false. 
+ * Whether E is nothrow copy constructible or nothrow move constructible 
+ * is irrelevant when T is void. */
+template <typename E>
+struct expected_copy_assign_base<void, E, true, false, false, false, false>
+    : expected_move_ctor_base<void,E> {
+    using expected_move_ctor_base<void,E>::expected_move_ctor_base;
+    expected_copy_assign_base() = default;
+    expected_copy_assign_base(expected_copy_assign_base const&) = default;
+    expected_copy_assign_base(expected_copy_assign_base&&) = default;
+
+    expected_copy_assign_base& operator=(expected_copy_assign_base const& rhs) noexcept {
+        this->internal_copy_assign(rhs);
+        return *this;
+    }
+};
+
+
+/* T is void. E is nothrow copy constructible => doesn't matter it E is 
+ * nothrow move constructible. Cannot use template non-type parameter
+ * for both nothrow copy and nothrow move as that cuases ambiguities 
+ * during overload resolution */
+template <typename E, bool B>
+struct expected_copy_assign_base<void, E, true, false, false, true, B>
+    : expected_move_ctor_base<void,E> {
+    using expected_move_ctor_base<void,E>::expected_move_ctor_base;
+    expected_copy_assign_base() = default;
+    expected_copy_assign_base(expected_copy_assign_base const&) = default;
+    expected_copy_assign_base(expected_copy_assign_base&&) = default;
+
+    expected_copy_assign_base& operator=(expected_copy_assign_base const& rhs) noexcept {
+        this->internal_copy_assign(rhs);
+        return *this;
+    }
+};
+
+/* T is void. E is not nothrow copy constructible but is nothrow move constructible */
+template <typename E>
+struct expected_copy_assign_base<void, E, true, false, false, false, true>
+    : expected_move_ctor_base<void,E> {
+    using expected_move_ctor_base<void,E>::expected_move_ctor_base;
+    expected_copy_assign_base() = default;
+    expected_copy_assign_base(expected_copy_assign_base const&) = default;
+    expected_copy_assign_base(expected_copy_assign_base&&) = default;
+
+    expected_copy_assign_base& operator=(expected_copy_assign_base const& rhs) noexcept {
+        this->internal_copy_assign(rhs);
+        return *this;
+    }
+};
+
+
+/* expected_interface_base */
 /* Provides functions availabe for all instantiations of expected.
  * Operations unique to when either T is void or T is non-void are 
  * provided in derived classes */
 template <typename T, typename E>
-class expected_interface_base : impl::expected_move_ctor_base<T,E> {
+class expected_interface_base : impl::expected_copy_assign_base<T,E> {
     static_assert(!std::is_reference_v<T>, "T must not be reference");
     static_assert(!std::is_reference_v<E>, "E must not be reference");
     static_assert(!std::is_same_v<T, std::remove_cv_t<unexpected<E>>>,
                   "T must not be unexpected<E>");
-    using base_t = impl::expected_move_ctor_base<T,E>;
+    static_assert(!std::is_same_v<unexpect_t, T>, "T must not be unexpect_t");
+    static_assert(!std::is_same_v<unexpect_t, E>, "E must not be unexpect_t");
+    using base_t = expected_copy_assign_base<T,E>;
 
     public:
         using base_t::base_t;
         expected_interface_base() = default;
         expected_interface_base(expected_interface_base const&) = default;
         expected_interface_base(expected_interface_base&&) = default;
+        expected_interface_base& operator=(expected_interface_base const&) = default;
 
         /* Conditionally explicit unexpected lvalue ctor */
         template <typename G = E, typename EE = E,
@@ -595,13 +1066,21 @@ class expected_interface_base : impl::expected_move_ctor_base<T,E> {
         void store(Args&&... args) noexcept;
 
         template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
-        constexpr U& get_val();
+        constexpr U& internal_get_value() &;
 
         template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
-        constexpr U const& get_val() const;
+        constexpr U const& internal_get_value() const &;
 
-        constexpr unexpected<E>& get_unexpect();
-        constexpr unexpected<E> const& get_unexpect() const;
+        template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
+        constexpr U&& internal_get_value() &&;
+
+        template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
+        constexpr U const&& internal_get_value() const &&;
+
+        constexpr unexpected<E>& internal_get_unexpect() &;
+        constexpr unexpected<E> const& internal_get_unexpect() const &;
+        constexpr unexpected<E>&& internal_get_unexpect() &&;
+        constexpr unexpected<E> const&& internal_get_unexpect() const &&;
 };
 
 template <typename T, typename E>
@@ -647,7 +1126,7 @@ constexpr expected_interface_base<T,E>::expected_interface_base(unexpect_t,
 
 template <typename T, typename E>
 constexpr expected_interface_base<T,E>::operator bool() const noexcept {
-    return this->has_val_;
+    return this->has_value();
 }
 
 template <typename T, typename E>
@@ -678,24 +1157,46 @@ void expected_interface_base<T,E>::store(Args&&... args) noexcept {
 
 template <typename T, typename E>
 template <typename U, typename>
-constexpr U& expected_interface_base<T,E>::get_val() {
-    return this->val_;
+constexpr U& expected_interface_base<T,E>::internal_get_value() & {
+    return base_t::internal_get_value();
 }
 
 template <typename T, typename E>
 template <typename U, typename>
-constexpr U const& expected_interface_base<T,E>::get_val() const {
-    return this->val_;
+constexpr U const& expected_interface_base<T,E>::internal_get_value() const & {
+    return base_t::internal_get_value();
 }
 
 template <typename T, typename E>
-constexpr unexpected<E>& expected_interface_base<T,E>::get_unexpect() {
-    return base_t::get_unexpect();;
+template <typename U, typename>
+constexpr U&& expected_interface_base<T,E>::internal_get_value() && {
+    return std::move(base_t::internal_get_value());
 }
 
 template <typename T, typename E>
-constexpr unexpected<E> const& expected_interface_base<T,E>::get_unexpect() const {
-    return base_t::get_unexpect();
+template <typename U, typename>
+constexpr U const&& expected_interface_base<T,E>::internal_get_value() const && {
+    return std::move(base_t::internal_get_value());
+}
+
+template <typename T, typename E>
+constexpr unexpected<E>& expected_interface_base<T,E>::internal_get_unexpect() & {
+    return base_t::internal_get_unexpect();
+}
+
+template <typename T, typename E>
+constexpr unexpected<E> const& expected_interface_base<T,E>::internal_get_unexpect() const & {
+    return base_t::internal_get_unexpect();
+}
+
+template <typename T, typename E>
+constexpr unexpected<E>&& expected_interface_base<T,E>::internal_get_unexpect() && {
+    return std::move(base_t::internal_get_unexpect());
+}
+
+template <typename T, typename E>
+constexpr unexpected<E> const&& expected_interface_base<T,E>::internal_get_unexpect() const && {
+    return std::move(base_t::internal_get_unexpect());
 }
 
 } /* namespace impl */
@@ -717,6 +1218,7 @@ class expected : public impl::expected_interface_base<T,E> {
         expected() = default;
         expected(expected const&) = default;
         expected(expected&&) = default;
+        expected& operator=(expected const&) = default;
 
         /* Conditionally explicit perfect forwarding conversion ctor */
         template <typename U = T, typename TT = T, typename EE = E,
@@ -851,28 +1353,28 @@ template <typename T, typename E>
 constexpr T& expected<T,E>::value() & {
     if(!bool(*this))
         throw bad_expected_access(this->error());
-    return this->get_val();
+    return this->internal_get_value();
 }
 
 template <typename T, typename E>
 constexpr T const& expected<T,E>::value() const & {
     if(!bool(*this))
         throw bad_expected_access(this->error());
-    return this->get_val();
+    return this->internal_get_value();
 }
 
 template <typename T, typename E>
 constexpr T&& expected<T,E>::value() && {
     if(!bool(*this))
         throw bad_expected_access(this->error());
-    return std::move(this->get_val());
+    return std::move(this->internal_get_value());
 }
 
 template <typename T, typename E>
 constexpr T const&& expected<T,E>::value() const && {
     if(!bool(*this))
         throw bad_expected_access(this->error());
-    return std::move(this->get_val());
+    return std::move(this->internal_get_value());
 }
 
 template <typename E>
@@ -890,6 +1392,7 @@ class expected<void, E> : public impl::expected_interface_base<void,E> {
         expected() = default;
         expected(expected const&) = default;
         expected(expected&&) = default;
+        expected& operator=(expected const&) = default;
 
         /* Conditionally explicit conversion constructors */
         template <typename U, typename G, typename TT = void, typename EE = E,
