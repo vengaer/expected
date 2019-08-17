@@ -104,4 +104,28 @@ TEST_CASE("Move constructible iff type parameters are", "[expected][move][condit
     REQUIRE(!std::is_move_constructible_v<expected<int, not_movable_t>>);
 }
 
+TEST_CASE("Copy construction when bool(*this) == true", "[expected][copy]") {
+    expected<int, double> e1{1};
+    expected e2{e1};
+    REQUIRE(e1.value() == e2.value());
+}
+
+TEMPLATE_TEST_CASE("Copy construction when bool(*this) == false", "[expected][copy]", int, void) {
+    unexpected<double> u(1.0);
+    expected<TestType, double> e1(u);
+    expected e2(e1);
+    REQUIRE( THROWS(e2.value(), bad_expected_access<double>) );
+    REQUIRE(e1.error() == e2.error());
+}
+
+TEST_CASE("in_place_t variadic ctor not availble if T == void and sizeof...(Args) > 0", "[expected][constructor][in_place_t]") {
+    REQUIRE(std::is_constructible_v<expected<void, int>, in_place_t>);
+    REQUIRE(!std::is_constructible_v<expected<void, int>, in_place_t, int>);
+}
+
+TEST_CASE("in_place_t variadic ctor not available if T != void and is_constructible_v<T, Args...> = false", "[expected][constructor][in_place_t]") {
+    REQUIRE(std::is_constructible_v<expected<int, int>, in_place_t, double>);
+    REQUIRE(!std::is_constructible_v<expected<int, int>, in_place_t, std::string>);
+}
+
 #endif
