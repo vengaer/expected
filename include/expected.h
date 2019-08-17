@@ -1028,9 +1028,6 @@ class unexpected {
         template <typename E1, typename E2>
         friend constexpr bool operator!=(unexpected<E1> const&, unexpected<E2> const&);
 
-        template <typename E1>
-        friend std::enable_if_t<std::is_swappable_v<E1>>
-        std::swap(unexpected<E1>& x, unexpected<E1>& y) noexcept(noexcept(x.swap(y)));
     private:
         E val_;
 
@@ -1179,7 +1176,8 @@ E const&& bad_expected_access<E>::error() const && {
 
 namespace std {
 template <typename E1>
-void swap(vien::unexpected<E1>& x, vien::unexpected<E1>& y) noexcept(noexcept(x.swap(y))) {
+std::enable_if_t<std::is_swappable_v<E1>> 
+swap(vien::unexpected<E1>& x, vien::unexpected<E1>& y) noexcept(noexcept(x.swap(y))) {
     x.swap(y);
 }
 }
