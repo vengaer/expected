@@ -370,6 +370,14 @@ struct expected_construction_base<void, E> : expected_base<void,E> {
         new (std::addressof(this->unexpect_)) unexpected<E>(std::forward<Args>(args)...);
         this->has_val_ = false;
     }
+
+    constexpr unexpected<E>& get_unexpect() {
+        return this->unexpect_;
+    }
+
+    constexpr unexpected<E> const& get_unexpect() const {
+        return this->unexpect_;
+    }
 };
 
 /* expected_default_ctor_base */
