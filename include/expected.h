@@ -739,6 +739,12 @@ class expected : public impl::expected_interface_base<T,E> {
                   >>
         constexpr explicit expected(in_place_t, Args&&...);
 
+        template <typename U, typename... Args,
+                  typename = std::enable_if_t<
+                      std::is_constructible_v<T, std::initializer_list<U>&, Args...>
+                  >>
+        constexpr explicit expected(in_place_t, std::initializer_list<U>, Args&&...);
+
         constexpr T& value() &;
         constexpr T const& value() const &;
         constexpr T&& value() &&;
@@ -797,6 +803,12 @@ template <typename T, typename E>
 template <typename... Args, typename>
 constexpr expected<T,E>::expected(in_place_t, Args&&... args) {
     this->store(std::forward<Args>(args)...);
+}
+
+template <typename T, typename E>
+template <typename U, typename... Args, typename>
+constexpr expected<T,E>::expected(in_place_t, std::initializer_list<U> il, Args&&... args) {
+    this->store(il, std::forward<Args>(args)...);
 }
 
 template <typename T, typename E>
