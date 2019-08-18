@@ -229,6 +229,20 @@ template <typename T, typename E>
 inline bool constexpr expected_enable_move_assignment_v =
     expected_enable_move_assignment<T,E>::value;
 
+/* Tested only when T is not void, hence no void check */
+template <typename T, typename E, typename U>
+struct expected_enable_unary_forwarding_assign
+    : std::bool_constant<!std::is_same_v<expected<T,E>, remove_cvref_t<U>> &&
+                         !std::conjunction_v<std::is_scalar<T>,
+                                             std::is_same<T, std::decay_t<U>>> &&
+                         std::is_constructible_v<T,U> &&
+                         std::is_assignable_v<T&,U> &&
+                         std::is_nothrow_move_constructible_v<E>> { };
+
+template <typename T, typename E, typename U>
+inline bool constexpr expected_enable_unary_forwarding_assign_v =
+    expected_enable_unary_forwarding_assign<T,E,U>::value;
+
 struct no_init_t {
     explicit no_init_t() = default;
 };
@@ -869,7 +883,7 @@ class expected_interface_base : impl::expected_move_assign_base<T,E> {
 
     protected:
         template <typename... Args>
-        void store(Args&&... args) noexcept;
+        void store(Args&&... args);
 
         template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
         constexpr U& internal_get_value() &;
@@ -960,7 +974,7 @@ constexpr E const&& expected_interface_base<T,E>::error() const && {
 
 template <typename T, typename E>
 template <typename... Args>
-void expected_interface_base<T,E>::store(Args&&... args) noexcept {
+void expected_interface_base<T,E>::store(Args&&... args) {
     base_t::store(std::forward<Args>(args)...);
 }
 
@@ -1093,6 +1107,12 @@ class expected : public impl::expected_interface_base<T,E> {
                   >>
         constexpr explicit expected(in_place_t, std::initializer_list<U>, Args&&...);
 
+        template <typename U = T, typename TT = T, typename EE = E,
+                  typename = std::enable_if_t<
+                      impl::expected_enable_unary_forwarding_assign_v<TT, EE, U>
+                   >>
+        expected& operator=(U&&);
+
         constexpr T& value() &;
         constexpr T const& value() const &;
         constexpr T&& value() &&;
@@ -1158,6 +1178,33 @@ template <typename U, typename... Args, typename>
 constexpr expected<T,E>::expected(in_place_t, std::initializer_list<U> il, Args&&... args)
     : base_t(impl::no_init) {
     this->store(il, std::forward<Args>(args)...);
+}
+
+template <typename T, typename E>
+template <typename U, typename, typename, typename>
+expected<T,E>& expected<T,E>::operator=(U&& v) {
+    if(bool(*this)) {
+        this->store(std::forward<U>(v));
+    }
+    else {
+        if constexpr(std::is_nothrow_constructible_v<T, U&&>) {
+            this->internal_get_unexpect().~unexpected<E>();
+            this->store(std::forward<U>(v));
+        }
+        else {
+            unexpected<E> tmp = unexpected(std::move(this->internal_get_unexpect()));
+            this->internal_get_unexpect().~unexpected<E>();
+            try {
+                this->store(std::forward<U>(v));
+            }
+            catch(...) {
+                this->store(unexpect, std::move(tmp));
+                throw;
+            }
+        }
+    }
+
+    return *this;
 }
 
 template <typename T, typename E>
