@@ -1164,6 +1164,12 @@ class expected : public impl::expected_interface_base<T,E> {
         constexpr T const& value() const &;
         constexpr T&& value() &&;
         constexpr T const&& value() const &&;
+
+        template <typename... Args, 
+                  typename = std::enable_if_t<
+                      std::is_nothrow_constructible_v<T, Args&&...>
+                  >>
+        T& emplace(Args&&...);
 };
 
 template <typename T, typename E>
@@ -1280,6 +1286,37 @@ constexpr T const&& expected<T,E>::value() const && {
     if(!bool(*this))
         throw bad_expected_access(this->error());
     return std::move(this->internal_get_value());
+}
+
+template <typename T, typename E>
+template <typename... Args, typename>
+T& expected<T,E>::emplace(Args&&... args) {
+    if(bool(*this))
+        this->store(std::forward<Args>(args)...);
+    else {
+        if constexpr(std::is_nothrow_constructible_v<T, Args&&...>) {
+            this->internal_get_unexpect().~unexpected<E>();
+            this->store(std::forward<Args>(args)...);
+        }
+        else if constexpr(std::is_nothrow_constructible_v<T>) {
+            T tmp(std::forward<Args>(args)...);
+            this->internal_get_unexpect().~unexpected<E>();
+            this->store(std::move(tmp));
+        }
+        else {
+            unexpected<E> tmp(std::move(this->internal_get_unexpect().value()));
+            this->internal_get_unexpect().~unexpected<E>();
+            try {
+                this->store(std::forward<Args>(args)...);
+            }
+            catch(...) {
+                this->store(unexpect, std::move(tmp));
+                throw;
+            }
+        }
+    }
+
+    return this->internal_get_value();
 }
 
 template <typename E>
