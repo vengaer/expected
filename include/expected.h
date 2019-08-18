@@ -635,9 +635,7 @@ struct expected_copy_assign_base<T, E, true>
     expected_copy_assign_base(expected_copy_assign_base const&) = default;
     expected_copy_assign_base(expected_copy_assign_base&&) = default;
 
-    expected_copy_assign_base& operator=(expected_copy_assign_base const& rhs) 
-                noexcept(std::is_nothrow_copy_constructible_v<T> &&
-                         std::is_nothrow_copy_assignable_v<T>) {
+    expected_copy_assign_base& operator=(expected_copy_assign_base const& rhs) {
 
         if(this->has_value() && rhs.has_value()) {
             if constexpr(!std::is_void_v<T>)
