@@ -5,6 +5,7 @@
 #include "test_utils.h"
 #include <string>
 #include <type_traits>
+#include <vector>
 
 using namespace vien;
 
@@ -528,6 +529,17 @@ TEST_CASE("expected<void,E>::emplace", "[expected][assignment][void]") {
     REQUIRE(!bool(e));
     e.emplace();
     REQUIRE(bool(e));
+}
+
+TEST_CASE("expected<T,E>::emplace(Args...)", "[expected][assignment]") {
+    double d = 1.0;
+    expected<double, int> e(unexpect, 10);
+
+    REQUIRE(!bool(e));
+
+    REQUIRE(e.emplace(d) == d);
+    REQUIRE(bool(e));
+    REQUIRE(e.value() == d);
 }
 
 #endif
