@@ -2,6 +2,7 @@
 #include "catch.hpp"
 #include "expected.h"
 #include "traits.h"
+#include "test_utils.h"
 #include <string>
 #include <type_traits>
 
@@ -39,39 +40,6 @@ TEST_CASE("Copy assignment disallowed when appropriate", "[expected][assignment]
 
     REQUIRE(std::is_copy_assignable_v<expected<void, std::string>>);
     REQUIRE(std::is_copy_assignable_v<expected<int, std::string>>);
-}
-
-TEST_CASE("Copy assignment noexcept if appropriate", "[expected][assignment][copy][noexcept]") {
-    struct nothrow_copy_assign_t {
-        nothrow_copy_assign_t& operator=(nothrow_copy_assign_t const&) noexcept {
-                return *this;
-        }
-    };
-
-    struct copy_assign_may_throw_t {
-        copy_assign_may_throw_t(copy_assign_may_throw_t const&) noexcept { }
-        copy_assign_may_throw_t& operator=(copy_assign_may_throw_t const&) {
-            return *this;
-        };
-    };
-
-    struct copy_ctor_may_throw_t {
-        copy_ctor_may_throw_t(copy_ctor_may_throw_t const&) { }
-        copy_ctor_may_throw_t& operator=(copy_ctor_may_throw_t const&) noexcept {
-            return *this;
-        };
-    };
-
-    REQUIRE(std::is_nothrow_copy_assignable_v<expected<int, nothrow_copy_assign_t>>);
-    REQUIRE(std::is_nothrow_copy_assignable_v<expected<int, copy_assign_may_throw_t>>);
-    REQUIRE(std::is_nothrow_copy_assignable_v<expected<int, copy_ctor_may_throw_t>>);
-    REQUIRE(std::is_nothrow_copy_assignable_v<expected<int, double>>);
-    REQUIRE(std::is_nothrow_copy_assignable_v<expected<nothrow_copy_assign_t, int>>);
-
-    REQUIRE(!std::is_nothrow_copy_assignable_v<expected<void, nothrow_copy_assign_t>>);
-    REQUIRE(!std::is_nothrow_copy_assignable_v<expected<void, int>>);
-    REQUIRE(!std::is_nothrow_copy_assignable_v<expected<copy_assign_may_throw_t, int>>);
-    REQUIRE(!std::is_nothrow_copy_assignable_v<expected<copy_ctor_may_throw_t, int>>);
 }
 
 TEMPLATE_TEST_CASE("Copy assignment correct when T is not void and bool(lhs) == bool(rhs)", "[expected][assignment][copy]", int, std::string) {
@@ -211,6 +179,39 @@ TEST_CASE("Copy assignment correct when T is void and bool(lhs) != bool(rhs)", "
         REQUIRE( !THROWS_ANY(e1.value()) );
         REQUIRE(bool(e1));
         REQUIRE(bool(e2) == bool(e1));
+    }
+}
+
+TEST_CASE("Copy assignment satisfies strong exception guarantee", "[expected][assignment][copy]") {
+    nth_instance_throws_on_creation_t<2>::reset_instance_count();
+
+    SECTION("Assignment where bool(lhs) == false and bool(rhs) == true") {
+        unexpected<int> u(5);
+        nth_instance_throws_on_creation_t<2> ni{5};
+        expected<nth_instance_throws_on_creation_t<2>, int> e1(u);
+        expected<nth_instance_throws_on_creation_t<2>, int> e2(std::move(ni));
+        REQUIRE( THROWS(e1 = e2, std::runtime_error) );
+        REQUIRE( THROWS(e1.value(), bad_expected_access<int>) );
+        REQUIRE( !THROWS_ANY(e2.value()) );
+        REQUIRE(e1.error() == u.value());
+        REQUIRE(e2.value().i == ni.i);
+    }
+
+    SECTION("Assignment where bool(lhs) == true and bool(rhs) == true") {
+        int ni_val = 5;
+        nth_instance_throws_on_creation_t<2> ni{ni_val};
+        unexpected<nth_instance_throws_on_creation_t<2>> u(std::move(ni));
+        expected<int, nth_instance_throws_on_creation_t<2>> e1(1);
+        expected<int, nth_instance_throws_on_creation_t<2>> e2(std::move(u));
+        REQUIRE( THROWS(e1 = e2, std::runtime_error) );
+        REQUIRE( !THROWS_ANY(e1.value()) );
+
+        /* e2.value() will copy E and throw a runtime_error if not reset */
+        nth_instance_throws_on_creation_t<2>::reset_instance_count();
+
+        REQUIRE( THROWS(e2.value(), bad_expected_access<void>) );
+        REQUIRE(e1.value() == 1);
+        REQUIRE(e2.error().i == ni_val);
     }
 }
 
@@ -393,6 +394,18 @@ TEST_CASE("Move assignment correct when T is void and bool(lhs) != bool(rhs)", "
         REQUIRE(bool(e1));
         REQUIRE(bool(e2) == bool(e1));
     }
+}
+
+TEST_CASE("Move assignment satisfies strong exception guarantee", "[expected][assignment][move]") {
+    unexpected<int> u(5);
+    throws_on_nth_move_t<1> ni{5};
+    expected<throws_on_nth_move_t<1>, int> e1(u);
+    expected<throws_on_nth_move_t<1>, int> e2(ni);
+    REQUIRE( THROWS(e1 = std::move(e2), std::runtime_error) );
+    REQUIRE( THROWS(e1.value(), bad_expected_access<int>) );
+    REQUIRE( !THROWS_ANY(e2.value()) );
+    REQUIRE(e1.error() == u.value());
+    REQUIRE(e2.value().i == ni.i);
 }
 
 #endif
