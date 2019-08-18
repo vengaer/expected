@@ -243,6 +243,22 @@ template <typename T, typename E, typename U>
 inline bool constexpr expected_enable_unary_forwarding_assign_v =
     expected_enable_unary_forwarding_assign<T,E,U>::value;
 
+template <typename T, typename E>
+struct expected_enable_swap
+    : std::bool_constant<std::is_swappable_v<T> &&
+                         std::is_swappable_v<E> &&
+                         std::is_move_constructible_v<T> &&
+                         std::is_move_constructible_v<E> &&
+                        (std::is_nothrow_move_constructible_v<T> ||
+                         std::is_nothrow_move_constructible_v<E>)> { };
+
+template <typename E>
+struct expected_enable_swap<void,E>
+    : std::is_swappable<E> { };
+
+template <typename T, typename E>
+inline bool constexpr expected_enable_swap_v = expected_enable_swap<T,E>::value;
+
 struct no_init_t {
     explicit no_init_t() = default;
 };
@@ -1176,6 +1192,16 @@ class expected : public impl::expected_interface_base<T,E> {
                       std::is_nothrow_constructible_v<T, std::initializer_list<U>&, Args&&...>
                   >>
         T& emplace(std::initializer_list<U>&, Args&&...);
+
+        template <typename TT = T, typename EE = E,
+                  typename = std::enable_if_t<
+                      impl::expected_enable_swap_v<TT, EE>
+                  >>
+        void swap(expected& rhs) noexcept(std::is_nothrow_move_constructible_v<T> &&
+                                          std::is_nothrow_swappable_v<T> &&
+                                          std::is_nothrow_move_constructible_v<E> &&
+                                          std::is_nothrow_swappable_v<E>);
+
 };
 
 template <typename T, typename E>
@@ -1357,6 +1383,54 @@ T& expected<T,E>::emplace(std::initializer_list<U>& il, Args&&... args) {
     return this->internal_get_value();
 }
 
+template <typename T, typename E>
+template <typename, typename, typename>
+void expected<T,E>::swap(expected& rhs) noexcept(std::is_nothrow_move_constructible_v<T> &&
+                                                 std::is_nothrow_swappable_v<T> &&
+                                                 std::is_nothrow_move_constructible_v<E> &&
+                                                 std::is_nothrow_swappable_v<E>) {
+    using std::swap;
+
+    if(bool(*this) && bool(rhs))
+        swap(this->internal_get_value(), rhs.internal_get_value());
+
+    else if(!bool(*this) && !bool(rhs))
+        swap(this->internal_get_unexpect(), rhs.internal_get_unexpect());
+
+    else if(!bool(*this) && bool(rhs))
+        rhs.swap(*this);
+
+    else {
+        if constexpr(std::is_nothrow_move_constructible_v<E>) {
+            unexpected<E> tmp = std::move(rhs.internal_get_unexpect());
+            rhs.internal_get_unexpect().~unexpected<E>();
+            try {
+                rhs.store(std::move(this->internal_get_value()));
+                this->internal_get_value().~T();
+                this->store(unexpect, std::move(tmp));
+            }
+            catch(...) {
+                rhs.store(unexpect, std::move(tmp));
+                throw;
+            }
+        }
+        else if constexpr(std::is_nothrow_move_constructible_v<T>) {
+            T tmp = std::move(this->internal_get_value());
+            this->internal_get_value().~T();
+            try {
+                this->store(unexpect, unexpected(std::move(rhs.internal_get_unexpect().value())));
+                rhs.internal_get_unexpect().~unexpected<E>();
+                rhs.store(std::move(tmp));
+            }
+            catch(...) {
+                this->store(std::move(tmp));
+                throw;
+            }
+        }
+
+    }
+}
+
 template <typename E>
 class expected<void, E> : public impl::expected_interface_base<void,E> {
     using base_t = impl::expected_interface_base<void,E>;
@@ -1415,6 +1489,13 @@ class expected<void, E> : public impl::expected_interface_base<void,E> {
         constexpr void value() const;
 
         void emplace();
+
+        template <typename TT = void, typename EE = E,
+                  typename = std::enable_if_t<
+                      impl::expected_enable_swap_v<TT, EE>
+                  >>
+        void swap(expected& rhs) noexcept(std::is_nothrow_move_constructible_v<E> &&
+                                          std::is_nothrow_swappable_v<E>);
 };
 
 template <typename E>
@@ -1470,6 +1551,30 @@ void expected<void,E>::emplace() {
     if(!bool(*this)) {
         this->internal_get_unexpect().~unexpected<E>();
         this->store();
+    }
+}
+
+template <typename E>
+template <typename, typename, typename>
+void expected<void,E>::swap(expected& rhs) noexcept(std::is_nothrow_move_constructible_v<E> &&
+                                                   std::is_nothrow_swappable_v<E>) {
+    using std::swap;
+
+    // if(bool(*this) && bool(rhs))
+    /* nothing to do */
+
+    if(!bool(*this) && !bool(rhs))
+        swap(this->internal_get_unexpect(), rhs.internal_get_unexpect());
+
+    else if(!bool(*this) && bool(rhs))
+        rhs.swap(*this);
+
+    else if(bool(*this) && !bool(rhs)) {
+        /* No need to catch potential exception as the only thing
+         * to do would have been to rethrow it */
+        this->store(unexpect, unexpected(std::move(rhs).internal_get_unexpect().value()));
+        rhs.internal_get_unexpect().~unexpected<E>();
+        rhs.store();
     }
 }
 
@@ -1606,7 +1711,8 @@ constexpr E const&& unexpected<E>::value() const && noexcept {
 template <typename E>
 template <typename Err, typename>
 void unexpected<E>::swap(unexpected& other) noexcept(std::is_nothrow_swappable_v<Err>) {
-    std::swap(val_, other.val_);
+    using std::swap;
+    swap(val_, other.val_);
 }
 
 template <typename E1, typename E2>
