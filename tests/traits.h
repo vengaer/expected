@@ -29,6 +29,13 @@ template <typename T>
 inline bool constexpr overloaded_for_swapping_v =
     overloaded_for_swapping<T>::value;
 
+template <typename T>
+struct internal_swap_is_noexcept
+    : std::bool_constant<noexcept(std::declval<T&>().swap(std::declval<T&>()))> { };
+
+template <typename T>
+inline bool constexpr internal_swap_is_noexcept_v =
+    internal_swap_is_noexcept<T>::value;
 } /* namespace vien */
 
 #define THROWS(expr, except)  \
