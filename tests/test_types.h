@@ -1,5 +1,5 @@
-#ifndef EXPECTED_TEST_UTILS_H
-#define EXPECTED_TEST_UTILS_H
+#ifndef EXPECTED_TEST_TYPES_H
+#define EXPECTED_TEST_TYPES_H
 
 #include <stdexcept>
 
@@ -98,5 +98,25 @@ struct variadic_t {
 
     int i;
 };
+
+template <typename = void>
+struct swap_test_t {
+    swap_test_t() = default;
+    swap_test_t(swap_test_t const&) = default;
+    swap_test_t(swap_test_t&&) { }
+    swap_test_t& operator=(swap_test_t const&) { 
+        return *this;
+    }
+    swap_test_t& operator=(swap_test_t&&) { 
+        return *this;
+    }
+
+    void swap(swap_test_t) { }
+};
+
+namespace std {
+    template <typename T>
+    void swap(swap_test_t<T>&, swap_test_t<T>&) { }
+}
 
 #endif

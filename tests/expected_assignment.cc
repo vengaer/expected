@@ -2,7 +2,7 @@
 #include "catch.hpp"
 #include "expected.h"
 #include "traits.h"
-#include "test_utils.h"
+#include "test_types.h"
 #include <algorithm>
 #include <initializer_list>
 #include <string>
