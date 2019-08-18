@@ -3,6 +3,8 @@
 #include "expected.h"
 #include "traits.h"
 #include "test_utils.h"
+#include <algorithm>
+#include <initializer_list>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -540,6 +542,20 @@ TEST_CASE("expected<T,E>::emplace(Args...)", "[expected][assignment]") {
     REQUIRE(e.emplace(d) == d);
     REQUIRE(bool(e));
     REQUIRE(e.value() == d);
+}
+
+TEST_CASE("expected<T,E>::emplace(initializer_list, Args...)", "[expected][assignment]") {
+
+    std::initializer_list<int> il{1, 2, 3, 4, 5, 6};
+    variadic_t v(il, 1, 2, 3);
+
+    expected<variadic_t, int> e(unexpect, 10);
+
+    REQUIRE(!bool(e));
+
+    REQUIRE(e.emplace(il, 1, 2, 3) == v);
+    REQUIRE(bool(e));
+    REQUIRE(e.value() == v);
 }
 
 #endif

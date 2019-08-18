@@ -76,4 +76,27 @@ struct throws_on_nth_move_t {
 template <int N>
 int throws_on_nth_move_t<N>::instances{0};
 
+struct variadic_t {
+    template <typename... Args>
+    variadic_t(std::initializer_list<int>& il, Args&&... args) noexcept { 
+        i = std::accumulate(std::begin(il), std::end(il), 0);
+        i += 1000 * (args + ...);
+    }
+    variadic_t(variadic_t const& rhs) : i{rhs.i} { }
+    variadic_t& operator=(variadic_t const& rhs) {
+        i = rhs.i;
+        return *this;
+    }
+
+    bool operator==(variadic_t const& rhs) const {
+        return i == rhs.i;
+    }
+
+    bool operator!=(variadic_t const& rhs) const {
+        return !(*this == rhs);
+    }
+
+    int i;
+};
+
 #endif
