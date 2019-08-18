@@ -32,9 +32,9 @@ inline bool constexpr overloaded_for_swapping_v =
 } /* namespace vien */
 
 #define THROWS(expr, except)  \
-std::invoke([=]() -> bool { \
+std::invoke([&]() -> bool { \
     try { \
-        return [=]() -> bool { \
+        return [&]() -> bool { \
             try { \
                 expr; \
             } \
@@ -50,7 +50,7 @@ std::invoke([=]() -> bool { \
 })
 
 #define THROWS_ANY(expr) \
-std::invoke([=]() -> bool { \
+std::invoke([&]() -> bool { \
     try { \
         expr; \
     } \
