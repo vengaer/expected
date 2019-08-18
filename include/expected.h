@@ -439,7 +439,7 @@ struct expected_construction_base<void, E> : expected_base<void,E> {
     }
 
     template <typename... Args>
-    constexpr void store(unexpect_t, Args&&... args) noexcept {
+    constexpr void store(unexpect_t, Args&&... args) {
         new (std::addressof(this->unexpect_)) unexpected<E>(std::forward<Args>(args)...);
         this->has_val_ = false;
     }
