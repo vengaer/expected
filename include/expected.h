@@ -1170,6 +1170,12 @@ class expected : public impl::expected_interface_base<T,E> {
                       std::is_nothrow_constructible_v<T, Args&&...>
                   >>
         T& emplace(Args&&...);
+
+        template <typename U, typename... Args,
+                  typename = std::enable_if_t<
+                      std::is_nothrow_constructible_v<T, std::initializer_list<U>&, Args&&...>
+                  >>
+        T& emplace(std::initializer_list<U>&, Args&&...);
 };
 
 template <typename T, typename E>
@@ -1308,6 +1314,38 @@ T& expected<T,E>::emplace(Args&&... args) {
             this->internal_get_unexpect().~unexpected<E>();
             try {
                 this->store(std::forward<Args>(args)...);
+            }
+            catch(...) {
+                this->store(unexpect, std::move(tmp));
+                throw;
+            }
+        }
+    }
+
+    return this->internal_get_value();
+}
+
+template <typename T, typename E>
+template <typename U, typename... Args, typename>
+T& expected<T,E>::emplace(std::initializer_list<U>& il, Args&&... args) {
+    if(bool(*this))
+        this->store(il, std::forward<Args>(args)...);
+
+    else {
+        if constexpr(std::is_nothrow_constructible_v<T, std::initializer_list<U>&, Args&&...>) {
+            this->internal_get_unexpect().~unexpected<E>();
+            this->store(il, std::forward<Args>(args)...);
+        }
+        else if constexpr(std::is_nothrow_move_constructible_v<T>) {
+            T tmp(il, std::forward<Args>(args)...);
+            this->internal_get_unexpect().~unexpected<E>();
+            this->store(std::move(tmp));
+        }
+        else {
+            unexpected<E> tmp(std::move(this->internal_get_unexpect().value()));
+            this->internal_get_unexpect().~unexpected<E>();
+            try {
+                this->store(il, std::forward<Args>(args)...);
             }
             catch(...) {
                 this->store(unexpect, std::move(tmp));
