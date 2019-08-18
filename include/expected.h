@@ -1338,6 +1338,8 @@ class expected<void, E> : public impl::expected_interface_base<void,E> {
         constexpr explicit expected(in_place_t, Args&&...);
 
         constexpr void value() const;
+
+        void emplace();
 };
 
 template <typename E>
@@ -1386,6 +1388,14 @@ template <typename E>
 constexpr void expected<void,E>::value() const {
     if(!bool(*this))
         throw bad_expected_access(this->error());
+}
+
+template <typename E>
+void expected<void,E>::emplace() {
+    if(!bool(*this)) {
+        this->internal_get_unexpect().~unexpected<E>();
+        this->store();
+    }
 }
 
 template <typename E>
