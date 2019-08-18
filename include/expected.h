@@ -598,7 +598,7 @@ struct expected_move_ctor_base<T, E, true, false>
         if(rhs.has_val_)
             this->store(std::move(rhs.val_));
         else
-            this->store(unexpect, std::move(rhs.internal_get_unexpect().value()));
+            this->store(unexpect, unexpected(std::move(rhs.internal_get_unexpect().value())));
     }
 };
 
@@ -618,7 +618,7 @@ struct expected_move_ctor_base<T, E, true, true>
         if(rhs.has_val_)
             this->store(std::move(rhs.val_));
         else
-            this->store(unexpect, std::move(rhs.internal_get_unexpect().value()));
+            this->store(unexpect, unexpected(std::move(rhs.internal_get_unexpect().value())));
     }
 };
 
@@ -653,16 +653,16 @@ struct expected_copy_assign_base<T, E, true>
 
         if(this->has_value() && rhs.has_value()) {
             if constexpr(!std::is_void_v<T>)
-                this->store(rhs.internal_get_value());
+                this->internal_get_value() = rhs.internal_get_value();
         }
 
         else if(!this->has_value() && !rhs.has_value())
-            this->store(unexpect, rhs.internal_get_unexpect().value());
+            this->internal_get_unexpect() = unexpected(rhs.internal_get_unexpect().value());
 
         else if(this->has_value() && !rhs.has_value()) {
             if constexpr(std::is_void_v<T>) {
                 /* If unexpected<E> ctor throws, this->has_val_ is not changed */
-                this->store(unexpect, rhs.internal_get_unexpect().value());
+                this->store(unexpect, unexpected(rhs.internal_get_unexpect().value()));
             }
             else if constexpr(std::is_nothrow_copy_constructible_v<E>) {
                 this->internal_get_value().~T();
@@ -677,7 +677,7 @@ struct expected_copy_assign_base<T, E, true>
                 T tmp = this->internal_get_value();
                 this->internal_get_value().~T();
                 try {
-                    this->store(unexpect, rhs.internal_get_unexpect().value());
+                    this->store(unexpect, unexpected(rhs.internal_get_unexpect().value()));
                 }
                 catch(...) {
                     this->store(std::move(tmp));
@@ -701,7 +701,7 @@ struct expected_copy_assign_base<T, E, true>
                 this->store(std::move(tmp));
             }
             else {
-                unexpected<E> tmp = unexpect(this->internal_get_unexpect().value());
+                unexpected<E> tmp = unexpected(this->internal_get_unexpect().value());
                 this->internal_get_unexpect().~unexpected<E>();
                 try {
                     this->store(rhs.internal_get_value());
@@ -756,11 +756,11 @@ struct expected_move_assign_base<T, E, true>
 
         if(this->has_value() && rhs.has_value()) {
             if constexpr(!std::is_void_v<T>)
-                this->store(std::move(rhs.internal_get_value()));
+                this->internal_get_value() = rhs.internal_get_value();
         }
 
         else if(!this->has_value() && !rhs.has_value())
-            this->store(unexpect, unexpected(std::move(rhs.internal_get_unexpect().value())));
+            this->internal_get_unexpect() = unexpected(rhs.internal_get_unexpect().value());
 
         else if(this->has_value() && !rhs.has_value()) {
             if constexpr(std::is_void_v<T>) {
@@ -775,7 +775,9 @@ struct expected_move_assign_base<T, E, true>
                 T tmp = std::move(this->internal_get_value());
                 this->internal_get_value().~T();
                 try {
-                    this->store(unexpect, unexpected(std::move(rhs.internal_get_unexpect().value())));
+                    this->store(unexpect, 
+                        unexpected(std::move(rhs.internal_get_unexpect().value()))
+                    );
                 }
                 catch(...) {
                     this->store(std::move(tmp));
@@ -873,6 +875,19 @@ class expected_interface_base : impl::expected_move_assign_base<T,E> {
         constexpr explicit
             expected_interface_base(unexpect_t, std::initializer_list<U>, Args&&...);
 
+        template <typename G = E, typename EE = E,
+                  typename = std::enable_if_t<
+                      std::is_nothrow_copy_constructible_v<EE> &&
+                      std::is_move_assignable_v<EE>
+                  >>
+        expected_interface_base& operator=(unexpected<G> const&);
+
+        template <typename G = E, typename EE = E,
+                  typename = std::enable_if_t<
+                      std::is_nothrow_move_constructible_v<EE> &&
+                      std::is_move_assignable_v<EE>
+                  >>
+        expected_interface_base& operator=(unexpected<G>&&);
 
         constexpr explicit operator bool() const noexcept;
 
@@ -946,6 +961,38 @@ constexpr expected_interface_base<T,E>::expected_interface_base(unexpect_t,
     this->store(unexpect, il, std::forward<Args>(args)...);
 }
 
+template <typename T, typename E>
+template <typename G, typename, typename>
+expected_interface_base<T,E>& 
+expected_interface_base<T,E>::operator=(unexpected<G> const& e) {
+    if(!bool(*this))
+        this->internal_get_unexpect() = unexpected(e.internal_get_unexpect().value());
+
+    else {
+        if constexpr(!std::is_void_v<T>)
+            this->internal_get_value().~T();
+
+        this->store(unexpect, unexpected(e.internal_get_unexpect().value()));
+    }
+
+    return *this;
+}
+
+template <typename T, typename E>
+template <typename G, typename, typename>
+expected_interface_base<T,E>& expected_interface_base<T,E>::operator=(unexpected<G>&& e) {
+    if(!bool(*this))
+        this->internal_get_unexpect() = unexpected(std::move(e.internal_get_unexpect().value()));
+
+    else {
+        if constexpr(!std::is_void_v<T>)
+            this->internal_get_value().~T();
+
+        this->store(unexpect, unexpected(std::move(e.internal_get_unexpect().value())));
+    }
+
+    return *this;
+}
 
 template <typename T, typename E>
 constexpr expected_interface_base<T,E>::operator bool() const noexcept {
@@ -1137,7 +1184,7 @@ constexpr expected<T,E>::expected(expected<U, G> const& rhs) : base_t(impl::no_i
     if(bool(rhs))
         this->store(rhs.value());
     else
-        this->store(unexpect, rhs.error());
+        this->store(unexpect, unexpected(rhs.error()));
 }
 
 template <typename T, typename E>
@@ -1146,7 +1193,7 @@ constexpr expected<T,E>::expected(expected<U, G> const& rhs) : base_t(impl::no_i
     if(bool(rhs))
         this->store(rhs.value());
     else
-        this->store(unexpect, rhs.error());
+        this->store(unexpect, unexpected(rhs.error()));
 }
 
 template <typename T, typename E>
@@ -1155,7 +1202,7 @@ constexpr expected<T,E>::expected(expected<U, G>&& rhs) : base_t(impl::no_init) 
     if(bool(rhs))
         this->store(std::move(rhs.value()));
     else
-        this->store(unexpect, std::move(rhs.error()));
+        this->store(unexpect, unexpected(std::move(rhs.error())));
 }
 
 template <typename T, typename E>
@@ -1164,7 +1211,7 @@ constexpr expected<T,E>::expected(expected<U, G>&& rhs) : base_t(impl::no_init) 
     if(bool(rhs))
         this->store(std::move(rhs.value()));
     else
-        this->store(unexpect, std::move(rhs.error()));
+        this->store(unexpect, unexpected(std::move(rhs.error())));
 }
 
 template <typename T, typename E>
@@ -1183,9 +1230,9 @@ constexpr expected<T,E>::expected(in_place_t, std::initializer_list<U> il, Args&
 template <typename T, typename E>
 template <typename U, typename, typename, typename>
 expected<T,E>& expected<T,E>::operator=(U&& v) {
-    if(bool(*this)) {
-        this->store(std::forward<U>(v));
-    }
+    if(bool(*this))
+        this->internal_get_value() = std::forward<U>(v);
+
     else {
         if constexpr(std::is_nothrow_constructible_v<T, U&&>) {
             this->internal_get_unexpect().~unexpected<E>();
@@ -1299,7 +1346,7 @@ constexpr expected<void,E>::expected(expected<U, G> const& rhs) : base_t(impl::n
     if(bool(rhs))
         this->store();
     else
-        this->store(unexpect, rhs.error());
+        this->store(unexpect, unexpected(rhs.error()));
 }
 
 template <typename E>
@@ -1308,7 +1355,7 @@ constexpr expected<void,E>::expected(expected<U, G> const& rhs) : base_t(impl::n
     if(bool(rhs))
         this->store();
     else
-        this->store(unexpect, rhs.error());
+        this->store(unexpect, unexpected(rhs.error()));
 }
 
 template <typename E>
@@ -1317,7 +1364,7 @@ constexpr expected<void,E>::expected(expected<U, G>&& rhs) : base_t(impl::no_ini
     if(bool(rhs))
         this->store();
     else
-        this->store(unexpect, std::move(rhs.error()));
+        this->store(unexpect, unexpected(std::move(rhs.error())));
 }
 
 template <typename E>
@@ -1326,7 +1373,7 @@ constexpr expected<void,E>::expected(expected<U, G>&& rhs) : base_t(impl::no_ini
     if(bool(rhs))
         this->store();
     else
-        this->store(unexpect, std::move(rhs.error()));
+        this->store(unexpect, unexpected(std::move(rhs.error())));
 }
 
 template <typename E>
