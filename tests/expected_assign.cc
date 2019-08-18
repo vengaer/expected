@@ -195,6 +195,7 @@ TEST_CASE("Copy assignment satisfies strong exception guarantee", "[expected][as
         REQUIRE( !THROWS_ANY(e2.value()) );
         REQUIRE(e1.error() == u.value());
         REQUIRE(e2.value().i == ni.i);
+        nth_instance_throws_on_creation_t<2>::reset_instance_count();
     }
 
     SECTION("Assignment where bool(lhs) == true and bool(rhs) == true") {
@@ -212,6 +213,7 @@ TEST_CASE("Copy assignment satisfies strong exception guarantee", "[expected][as
         REQUIRE( THROWS(e2.value(), bad_expected_access<void>) );
         REQUIRE(e1.value() == 1);
         REQUIRE(e2.error().i == ni_val);
+        nth_instance_throws_on_creation_t<2>::reset_instance_count();
     }
 }
 
@@ -406,6 +408,36 @@ TEST_CASE("Move assignment satisfies strong exception guarantee", "[expected][as
     REQUIRE( !THROWS_ANY(e2.value()) );
     REQUIRE(e1.error() == u.value());
     REQUIRE(e2.value().i == ni.i);
+}
+
+TEST_CASE("Unary forwarding assignment operator assigns correctly", "[expected][assignment][forwarding]") {
+    unexpected<int> u(1);
+
+    expected<int, int> e(10);
+
+    e = 20;
+    REQUIRE(bool(e));
+    REQUIRE(e.value() == 20);
+
+    e = u;
+    REQUIRE(!bool(e));
+    REQUIRE( THROWS(e.value(), bad_expected_access<int>) );
+    REQUIRE(e.error() == u.value());
+}
+
+TEST_CASE("Unary forwarding assignment operator satisfies strong exception guarantee", "[expected][assignment][forwarding]") {
+    nth_instance_throws_on_creation_t<2> ni(10);
+
+    unexpected<int> u(20);
+    expected<nth_instance_throws_on_creation_t<2>, int> e(u);
+    REQUIRE(!bool(e));
+    REQUIRE( THROWS_ANY(e = ni) );
+    REQUIRE(!bool(e));
+    nth_instance_throws_on_creation_t<2>::reset_instance_count();
+    REQUIRE( THROWS(e.value(), bad_expected_access<int>) );
+    REQUIRE(e.error() == 20);
+
+    nth_instance_throws_on_creation_t<2>::reset_instance_count();
 }
 
 #endif
