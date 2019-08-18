@@ -440,4 +440,87 @@ TEST_CASE("Unary forwarding assignment operator satisfies strong exception guara
     nth_instance_throws_on_creation_t<2>::reset_instance_count();
 }
 
+TEST_CASE("unexpected lvalue assignment operator assigns correctly", "[expected][assignment][unexpected]") {
+    unexpected<int> u(10);
+    expected<double, int> e(unexpect, 8);
+
+    REQUIRE(!bool(e));
+
+    e = u;
+    REQUIRE(e.error() == 10);
+
+    e = 0.0;
+    REQUIRE(bool(e));
+
+    e = u;
+    REQUIRE(!bool(e));
+    REQUIRE(e.error() == 10);
+}
+
+TEST_CASE("unexpected lvalue assignment operator fulfills strong exception guarantee", "[expected][assignment][unexpected]") {
+    struct throws_on_copy_t {
+        explicit throws_on_copy_t() = default;
+        throws_on_copy_t(throws_on_copy_t const&) {
+            throw std::runtime_error("copy");
+        }
+        throws_on_copy_t(throws_on_copy_t&&) = default;
+        throws_on_copy_t& operator=(throws_on_copy_t const&) = default;
+    };
+
+    unexpected<throws_on_copy_t> u(throws_on_copy_t{});
+    expected<int, throws_on_copy_t> e(unexpect, throws_on_copy_t{});
+
+    REQUIRE( THROWS(e = u, std::runtime_error) );
+    REQUIRE(!bool(e));
+
+    e = 10;
+    
+    REQUIRE( THROWS(e = u, std::runtime_error) );
+    REQUIRE(bool(e));
+    REQUIRE(e.value() == 10);
+}
+
+TEST_CASE("unexpected rvalue assignment operator assigns correctly", "[expected][assignment][unexpected]") {
+    unexpected<int> u1(10);
+    unexpected<int> u2(20);
+    expected<double, int> e(unexpect, 8);
+
+    REQUIRE(!bool(e));
+
+    e = std::move(u1);
+    REQUIRE(e.error() == 10);
+
+    e = 0.0;
+    REQUIRE(bool(e));
+
+    e = std::move(u2);
+    REQUIRE(!bool(e));
+    REQUIRE(e.error() == 20);
+}
+
+TEST_CASE("unexpected rvalue assignment operator fulfills strong exception guarantee", "[expected][assignment][unexpected]") {
+    struct throws_on_move_t {
+        explicit throws_on_move_t() = default;
+        throws_on_move_t(throws_on_move_t const&) = default;
+        throws_on_move_t(throws_on_move_t&&) {
+            throw std::runtime_error("move");
+        }
+        throws_on_move_t& operator=(throws_on_move_t const&) = default;
+    };
+
+    throws_on_move_t tom{};
+    unexpected<throws_on_move_t> u1(tom);
+    unexpected<throws_on_move_t> u2(tom);
+    expected<int, throws_on_move_t> e(unexpect, tom);
+
+    REQUIRE( THROWS(e = std::move(u1), std::runtime_error) );
+    REQUIRE(!bool(e));
+
+    e = 10;
+    
+    REQUIRE( THROWS(e = std::move(u2), std::runtime_error) );
+    REQUIRE(bool(e));
+    REQUIRE(e.value() == 10);
+}
+
 #endif
