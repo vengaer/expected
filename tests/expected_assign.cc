@@ -523,4 +523,11 @@ TEST_CASE("unexpected rvalue assignment operator fulfills strong exception guara
     REQUIRE(e.value() == 10);
 }
 
+TEST_CASE("expected<void,E>::emplace", "[expected][assignment][void]") {
+    expected<void, int> e{unexpect, 10};
+    REQUIRE(!bool(e));
+    e.emplace();
+    REQUIRE(bool(e));
+}
+
 #endif
