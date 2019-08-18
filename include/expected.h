@@ -228,6 +228,12 @@ struct expected_enable_move_assignment<void, E>
 template <typename T, typename E>
 inline bool constexpr expected_enable_move_assignment_v =
     expected_enable_move_assignment<T,E>::value;
+
+struct no_init_t {
+    explicit no_init_t() = default;
+};
+
+inline no_init_t constexpr no_init{};
                             
 /* expected hierarchy */
 
@@ -247,6 +253,7 @@ template <typename T, typename E>
 struct expected_base<T, E, true, true> {
 
     constexpr expected_base() : has_val_(true), val_(T()) { }
+    constexpr expected_base(no_init_t) : has_val_{false} { }
 
     ~expected_base() = default;
 
@@ -263,6 +270,7 @@ template <typename T, typename E>
 struct expected_base<T, E, false, true> {
     
     constexpr expected_base() : has_val_(true), val_(T()) { }
+    constexpr expected_base(no_init_t) : has_val_{false} { }
 
     ~expected_base() {
         if(has_val_)
@@ -282,6 +290,7 @@ template <typename T, typename E>
 struct expected_base<T, E, true, false> {
 
     constexpr expected_base() : has_val_(true), val_(T()) { }
+    constexpr expected_base(no_init_t) : has_val_{false} { }
 
     ~expected_base() {
         if(!has_val_)
@@ -301,6 +310,7 @@ template <typename T, typename E>
 struct expected_base<T, E, false, false> {
 
     constexpr expected_base() : has_val_(true), val_(T()) { }
+    constexpr expected_base(no_init_t) : has_val_{false} { }
 
     ~expected_base() {
         if(has_val_)
@@ -326,6 +336,7 @@ template <typename E>
 struct expected_base<void, E, false, true> {
 
     constexpr expected_base() : has_val_(true) { }
+    constexpr expected_base(no_init_t) : has_val_{false} { }
 
     ~expected_base() = default;
 
@@ -343,6 +354,7 @@ template <typename E>
 struct expected_base<void, E, false, false> {
 
     constexpr expected_base() : has_val_(true) { }
+    constexpr expected_base(no_init_t) : has_val_{false} { }
 
     ~expected_base() {
         if(!has_val_)
@@ -366,13 +378,13 @@ struct expected_construction_base : expected_base<T,E> {
     constexpr expected_construction_base() = default;
 
     template <typename... Args>
-    constexpr void store(Args&&... args) noexcept {
+    constexpr void store(Args&&... args) {
         new(std::addressof(this->val_)) T(std::forward<Args>(args)...);
         this->has_val_ = true;
     }
 
     template <typename... Args>
-    constexpr void store(unexpect_t, Args&&... args) noexcept {
+    constexpr void store(unexpect_t, Args&&... args) {
         new (std::addressof(this->unexpect_)) unexpected<E>(std::forward<Args>(args)...);
         this->has_val_ = false;
     }
@@ -881,40 +893,43 @@ class expected_interface_base : impl::expected_move_assign_base<T,E> {
 
 template <typename T, typename E>
 template <typename G, typename, typename, typename>
-constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G> const& e) {
+constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G> const& e)
+    : base_t(no_init) {
     this->store(unexpect, e);
 }
 
 template <typename T, typename E>
 template <typename G, typename, typename>
-constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G> const& e) {
+constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G> const& e)
+    : base_t(no_init) {
     this->store(unexpect, e);
 }
 
 template <typename T, typename E>
 template <typename G, typename, typename, typename>
-constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G>&& e) 
-                noexcept(std::is_nothrow_constructible_v<E, G&&>) {
+constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G>&& e)
+                noexcept(std::is_nothrow_constructible_v<E, G&&>) : base_t(no_init) {
     this->store(unexpect, std::move(e));
 }
 
 template <typename T, typename E>
 template <typename G, typename, typename>
 constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G>&& e)
-                noexcept(std::is_nothrow_constructible_v<E, G&&>) {
+                noexcept(std::is_nothrow_constructible_v<E, G&&>) : base_t(no_init) {
     this->store(unexpect, std::move(e));
 }
 
 template <typename T, typename E>
 template <typename... Args, typename>
-constexpr expected_interface_base<T,E>::expected_interface_base(unexpect_t, Args&&... args) {
+constexpr expected_interface_base<T,E>::expected_interface_base(unexpect_t, Args&&... args)
+    : base_t(no_init) {
     this->store(unexpect, std::forward<Args>(args)...);
 }
 
 template <typename T, typename E>
 template <typename U, typename... Args, typename>
 constexpr expected_interface_base<T,E>::expected_interface_base(unexpect_t,
-                std::initializer_list<U> il, Args&&... args) {
+                std::initializer_list<U> il, Args&&... args) : base_t(no_init) {
 
     this->store(unexpect, il, std::forward<Args>(args)...);
 }
@@ -1088,19 +1103,19 @@ class expected : public impl::expected_interface_base<T,E> {
 
 template <typename T, typename E>
 template <typename U, typename, typename, typename, typename>
-constexpr expected<T,E>::expected(U&& v) {
+constexpr expected<T,E>::expected(U&& v) : base_t(impl::no_init) {
     this->store(std::forward<U>(v));
 }
 
 template <typename T, typename E>
 template <typename U, typename, typename, typename>
-constexpr expected<T,E>::expected(U&& v) {
+constexpr expected<T,E>::expected(U&& v) : base_t(impl::no_init) {
     this->store(std::forward<U>(v));
 }
 
 template <typename T, typename E>
 template <typename U, typename G, typename, typename, typename, typename>
-constexpr expected<T,E>::expected(expected<U, G> const& rhs) {
+constexpr expected<T,E>::expected(expected<U, G> const& rhs) : base_t(impl::no_init) {
     if(bool(rhs))
         this->store(rhs.value());
     else
@@ -1109,7 +1124,7 @@ constexpr expected<T,E>::expected(expected<U, G> const& rhs) {
 
 template <typename T, typename E>
 template <typename U, typename G, typename, typename, typename>
-constexpr expected<T,E>::expected(expected<U, G> const& rhs) {
+constexpr expected<T,E>::expected(expected<U, G> const& rhs) : base_t(impl::no_init) {
     if(bool(rhs))
         this->store(rhs.value());
     else
@@ -1118,7 +1133,7 @@ constexpr expected<T,E>::expected(expected<U, G> const& rhs) {
 
 template <typename T, typename E>
 template <typename U, typename G, typename, typename, typename, typename>
-constexpr expected<T,E>::expected(expected<U, G>&& rhs) {
+constexpr expected<T,E>::expected(expected<U, G>&& rhs) : base_t(impl::no_init) {
     if(bool(rhs))
         this->store(std::move(rhs.value()));
     else
@@ -1127,7 +1142,7 @@ constexpr expected<T,E>::expected(expected<U, G>&& rhs) {
 
 template <typename T, typename E>
 template <typename U, typename G, typename, typename, typename>
-constexpr expected<T,E>::expected(expected<U, G>&& rhs) {
+constexpr expected<T,E>::expected(expected<U, G>&& rhs) : base_t(impl::no_init) {
     if(bool(rhs))
         this->store(std::move(rhs.value()));
     else
@@ -1136,13 +1151,14 @@ constexpr expected<T,E>::expected(expected<U, G>&& rhs) {
 
 template <typename T, typename E>
 template <typename... Args, typename>
-constexpr expected<T,E>::expected(in_place_t, Args&&... args) {
+constexpr expected<T,E>::expected(in_place_t, Args&&... args) : base_t(impl::no_init) {
     this->store(std::forward<Args>(args)...);
 }
 
 template <typename T, typename E>
 template <typename U, typename... Args, typename>
-constexpr expected<T,E>::expected(in_place_t, std::initializer_list<U> il, Args&&... args) {
+constexpr expected<T,E>::expected(in_place_t, std::initializer_list<U> il, Args&&... args)
+    : base_t(impl::no_init) {
     this->store(il, std::forward<Args>(args)...);
 }
 
@@ -1234,7 +1250,7 @@ class expected<void, E> : public impl::expected_interface_base<void,E> {
 
 template <typename E>
 template <typename U, typename G, typename, typename, typename, typename>
-constexpr expected<void,E>::expected(expected<U, G> const& rhs) {
+constexpr expected<void,E>::expected(expected<U, G> const& rhs) : base_t(impl::no_init) {
     if(bool(rhs))
         this->store();
     else
@@ -1243,7 +1259,7 @@ constexpr expected<void,E>::expected(expected<U, G> const& rhs) {
 
 template <typename E>
 template <typename U, typename G, typename, typename, typename>
-constexpr expected<void,E>::expected(expected<U, G> const& rhs) {
+constexpr expected<void,E>::expected(expected<U, G> const& rhs) : base_t(impl::no_init) {
     if(bool(rhs))
         this->store();
     else
@@ -1252,7 +1268,7 @@ constexpr expected<void,E>::expected(expected<U, G> const& rhs) {
 
 template <typename E>
 template <typename U, typename G, typename, typename, typename, typename>
-constexpr expected<void,E>::expected(expected<U, G>&& rhs) {
+constexpr expected<void,E>::expected(expected<U, G>&& rhs) : base_t(impl::no_init) {
     if(bool(rhs))
         this->store();
     else
@@ -1261,7 +1277,7 @@ constexpr expected<void,E>::expected(expected<U, G>&& rhs) {
 
 template <typename E>
 template <typename U, typename G, typename, typename, typename>
-constexpr expected<void,E>::expected(expected<U, G>&& rhs) {
+constexpr expected<void,E>::expected(expected<U, G>&& rhs) : base_t(impl::no_init) {
     if(bool(rhs))
         this->store();
     else
@@ -1270,7 +1286,7 @@ constexpr expected<void,E>::expected(expected<U, G>&& rhs) {
 
 template <typename E>
 template <typename... Args, typename>
-constexpr expected<void, E>::expected(in_place_t, Args&&...) {
+constexpr expected<void, E>::expected(in_place_t, Args&&...) : base_t(impl::no_init) {
     this->store();
 }
 
