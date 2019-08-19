@@ -906,11 +906,21 @@ class expected_interface_base : impl::expected_move_assign_base<T,E> {
         expected_interface_base& operator=(unexpected<G>&&);
 
         constexpr explicit operator bool() const noexcept;
+        constexpr bool has_value() const noexcept;
 
         constexpr E& error() &;
         constexpr E const& error() const &;
         constexpr E&& error() &&;
         constexpr E const&& error() const &&;
+
+        template <typename T1, typename E1, typename E2>
+        friend constexpr bool operator==(expected<T1, E1> const&, unexpected<E2> const&);
+        template <typename T1, typename E1, typename E2>
+        friend constexpr bool operator==(unexpected<E2> const&, expected<T1, E1> const&);
+        template <typename T1, typename E1, typename E2>
+        friend constexpr bool operator!=(expected<T1, E1> const&, unexpected<E2> const&);
+        template <typename T1, typename E1, typename E2>
+        friend constexpr bool operator!=(unexpected<E2> const&, expected<T1, E1> const&);
 
     protected:
         template <typename... Args>
@@ -1012,7 +1022,12 @@ expected_interface_base<T,E>& expected_interface_base<T,E>::operator=(unexpected
 
 template <typename T, typename E>
 constexpr expected_interface_base<T,E>::operator bool() const noexcept {
-    return this->has_value();
+    return base_t::has_value();
+}
+
+template <typename T, typename E>
+constexpr bool expected_interface_base<T,E>::has_value() const noexcept {
+    return base_t::has_value();
 }
 
 template <typename T, typename E>
@@ -1033,6 +1048,26 @@ constexpr E&& expected_interface_base<T,E>::error() && {
 template <typename T, typename E>
 constexpr E const&& expected_interface_base<T,E>::error() const && {
     return std::move(this->unexpect_.value());
+}
+
+template <typename T1, typename E1, typename E2>
+constexpr bool operator==(expected<T1, E1> const& x, unexpected<E2> const& e) {
+    return bool(x) ? false : unexpected(x.error()) == e;
+}
+
+template <typename T1, typename E1, typename E2>
+constexpr bool operator==(unexpected<E2> const& e, expected<T1, E1> const& x) {
+    return bool(x) ? false : unexpected(x.error()) == e;
+}
+
+template <typename T1, typename E1, typename E2>
+constexpr bool operator!=(expected<T1, E1> const& x, unexpected<E2> const& e) {
+    return bool(x) ? true : unexpected(x.error()) != e;
+}
+
+template <typename T1, typename E1, typename E2>
+constexpr bool operator!=(unexpected<E2> const& e, expected<T1, E1> const& x) {
+    return bool(x) ? true : unexpected(x.error()) != e;
 }
 
 template <typename T, typename E>
@@ -1210,6 +1245,27 @@ class expected : public impl::expected_interface_base<T,E> {
         constexpr T&& value() &&;
         constexpr T const&& value() const &&;
 
+        template <typename U>
+        constexpr T value_or(U&&) const &;
+        template <typename U>
+        constexpr T value_or(U&&) &&;
+
+        template <typename T1, typename E1, typename T2, typename E2>
+        friend constexpr bool operator==(expected<T1, E1> const&,
+                                         expected<T2, E2> const&);
+
+        template <typename T1, typename E1, typename T2, typename E2>
+        friend constexpr bool operator!=(expected<T1, E1> const&,
+                                         expected<T2, E2> const&);
+
+        template <typename T1, typename E1, typename T2>
+        friend constexpr bool operator==(expected<T1, E1> const&, T2 const&);
+        template <typename T1, typename E1, typename T2>
+        friend constexpr bool operator==(T2 const&, expected<T1, E1> const&);
+        template <typename T1, typename E1, typename T2>
+        friend constexpr bool operator!=(expected<T1, E1> const&, T2 const&);
+        template <typename T1, typename E1, typename T2>
+        friend constexpr bool operator!=(T2 const&, expected<T1, E1> const&);
 };
 
 template <typename T, typename E>
@@ -1480,6 +1536,62 @@ constexpr T const&& expected<T,E>::value() const && {
     return std::move(this->internal_get_value());
 }
 
+template <typename T, typename E>
+template <typename U>
+constexpr T expected<T,E>::value_or(U&& v) const & {
+    return bool(*this) ? **this : static_cast<T>(std::forward<U>(v));
+}
+
+template <typename T, typename E>
+template <typename U>
+constexpr T expected<T,E>::value_or(U&& v) && {
+    return bool(*this) ? std::move(**this) : static_cast<T>(std::forward<U>(v));
+}
+
+template <typename T1, typename E1, typename T2, typename E2>
+constexpr bool operator==(expected<T1, E1> const& x, expected<T2, E2> const& y) {
+    if(bool(x) != bool(y))
+        return false;
+
+    else if(!bool(x))
+        return x.error() == y.error();
+
+    else
+        return *x == *y;
+}
+
+template <typename T1, typename E1, typename T2, typename E2>
+constexpr bool operator!=(expected<T1, E1> const& x, expected<T2, E2> const& y) {
+    if(bool(x) != bool(y))
+        return true;
+
+    else if(!bool(x))
+        return x.error() != y.error();
+
+    else
+        return *x != *y;
+}
+
+template <typename T1, typename E1, typename T2>
+constexpr bool operator==(expected<T1, E1> const& x, T2 const& v) {
+    return bool(x) ? *x == v : false;
+}
+
+template <typename T1, typename E1, typename T2>
+constexpr bool operator==(T2 const& v, expected<T1, E1> const& x) {
+    return bool(x) ? *x == v : false;
+}
+
+template <typename T1, typename E1, typename T2>
+constexpr bool operator!=(expected<T1, E1> const& x, T2 const& v) {
+    return bool(x) ? *x != v : false;
+}
+
+template <typename T1, typename E1, typename T2>
+constexpr bool operator!=(T2 const& v, expected<T1, E1> const& x) {
+    return bool(x) ? *x != v : false;
+}
+
 template <typename E>
 class expected<void, E> : public impl::expected_interface_base<void,E> {
     using base_t = impl::expected_interface_base<void,E>;
@@ -1546,6 +1658,13 @@ class expected<void, E> : public impl::expected_interface_base<void,E> {
 
         constexpr void value() const;
 
+        template <typename E1,typename E2>
+        friend constexpr bool operator==(expected<void, E1> const&,
+                                         expected<void, E2> const&);
+
+        template <typename E1, typename E2>
+        friend constexpr bool operator!=(expected<void, E1> const&,
+                                         expected<void, E2> const&);
 };
 
 template <typename E>
@@ -1626,6 +1745,30 @@ template <typename E>
 constexpr void expected<void,E>::value() const {
     if(!bool(*this))
         throw bad_expected_access(this->error());
+}
+
+template <typename E1, typename E2>
+constexpr bool operator==(expected<void, E1> const& x, expected<void, E2> const& y) {
+    if(bool(x) != bool(y))
+        return false;
+
+    else if(!bool(x))
+        return x.error() == y.error();
+
+    else
+        return true;
+}
+
+template <typename E1, typename E2>
+constexpr bool operator!=(expected<void, E1> const& x, expected<void, E2> const& y) {
+    if(bool(x) != bool(y))
+        return true;
+
+    else if(!bool(x))
+        return x.error() != y.error();
+
+    else
+        return true;
 }
 
 template <typename E>
