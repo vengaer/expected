@@ -1,6 +1,6 @@
 /* Based off of the 6th revision of the std::expected
  * proposal (p0323r6). Uses SFINAE to achieve the
- * conditionally explicit expected constructors to be
+ * conditionally explicit constructors to be
  * introduced in C++20.
  *
  * Define VIEN_EXPECTED_EXTENDED for functional
