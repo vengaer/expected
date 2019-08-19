@@ -50,6 +50,28 @@ TEST_CASE("map when T is void", "[expected][extended][map]") {
     REQUIRE(e2 == 10);
 }
 
+TEST_CASE("map creates no unneccessary copies", "[expected][map]") {
+    static int copies = 0;
+    static int moves = 0;
+    struct count_ops_t {
+        count_ops_t() = default;
+        count_ops_t(count_ops_t const&) { ++copies; }
+        count_ops_t(count_ops_t&&) { ++moves; }
+    };
+
+    expected<count_ops_t, int> e1{};
+
+    auto e2 = std::move(e1).map([](count_ops_t&& i) {
+        return std::move(i);
+    }).map([](count_ops_t&& i) {
+        return std::move(i);
+    });
+
+    REQUIRE(copies == 0);
+    REQUIRE(moves == 4);
+    REQUIRE(bool(e2));
+}
+
 TEST_CASE("map_error modifies error", "[expected][extended][map_error]") {
     expected<std::string, int> e1("string");
     expected<std::string, int> e2(unexpect, 10);
