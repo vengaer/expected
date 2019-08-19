@@ -1312,6 +1312,7 @@ class expected : public impl::expected_interface_base<T,E> {
         auto map(F&&) &&;
         template <typename F>
         auto map(F&&) const &&;
+
         template <typename F>
         auto map_error(F&&) &;
         template <typename F>
@@ -1320,6 +1321,15 @@ class expected : public impl::expected_interface_base<T,E> {
         auto map_error(F&&) &&;
         template <typename F>
         auto map_error(F&&) const &&;
+
+        template <typename F>
+        expected and_then(F&&) &;
+        template <typename F>
+        expected and_then(F&&) const &;
+        template <typename F>
+        expected and_then(F&&) &&;
+        template <typename F>
+        expected and_then(F&&) const &&;
         #endif
 };
 
@@ -1769,6 +1779,42 @@ auto expected<T,E>::map_error(F&& f) const && {
             result_t(unexpect, f(std::move(this->error())));
 }
 
+template <typename T, typename E>
+template <typename F>
+[[nodiscard]]
+expected<T,E> expected<T,E>::and_then(F&& f) & {
+    return bool(*this) ?
+            expected(f(**this)) :
+            expected(unexpect, this->error());
+}
+
+template <typename T, typename E>
+template <typename F>
+[[nodiscard]]
+expected<T,E> expected<T,E>::and_then(F&& f) const & {
+    return bool(*this) ?
+            expected(f(**this)) :
+            expected(unexpect, this->error());
+}
+
+template <typename T, typename E>
+template <typename F>
+[[nodiscard]]
+expected<T,E> expected<T,E>::and_then(F&& f) && {
+    return bool(*this) ?
+            expected(f(std::move(**this))) :
+            expected(unexpect, std::move(this->error()));
+}
+
+template <typename T, typename E>
+template <typename F>
+[[nodiscard]]
+expected<T,E> expected<T,E>::and_then(F&& f) const && {
+    return bool(*this) ?
+            expected(f(std::move(**this))) :
+            expected(unexpect, std::move(this->error()));
+}
+
 #endif
 
 template <typename E>
@@ -1854,6 +1900,7 @@ class expected<void, E> : public impl::expected_interface_base<void,E> {
         auto map(F&&) &&;
         template <typename F>
         auto map(F&&) const &&;
+
         template <typename F>
         auto map_error(F&&) &;
         template <typename F>
