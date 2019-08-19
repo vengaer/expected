@@ -1,14 +1,260 @@
+/* Based off of the 6th revision of the std::expected
+ * proposal (p0323r6). Uses SFINAE to achieve the
+ * conditionally explicit expected constructors to be
+ * introduced in C++20.
+ *
+ * Define VIEN_EXPECTED_EXTENDED for functional
+ * extensions not in the proposal. */
+
 #ifndef EXPECTED_H
 #define EXPECTED_H
+
+/*
+    --expected synopsis--
+
+*** using syntax similar to conditionally noexcept for conditionally explicit
+
+namespace vien {
+inline namespace v1 {
+
+
+__ class template expected __
+
+template <typename T, typename E>
+class expected {
+    public:
+        using value_type = T;
+        using error_type = E;
+        using unexpected_type = unexpected<E>;
+
+        template <typename U>
+        using rebind = expected<U, error_type>;
+
+        constexpr expected();
+        cosntexpr expected(expected const&);
+        constexpr expected(expected&&)
+                        noexcept(std::is_nthrow_move_constructible_v<E> &&
+                                (std::is_void_v<T> || std::is_nothrow_move_constructible_v<T>))
+
+        template <typename U, typename G>
+        explicit((!std::is_void_v<T> && !std::is_void_v<U> &&
+                  !std::is_convertible_v<U const&, T>) ||
+                  !std::is_convertible_v<G const&, E>)
+        constexpr expected(expected<U,G> const&);
+
+        template <typename U, typename G>
+        explicit((!std::is_void_v<T> && !std::is_void_v<U> &&
+                  !std::is_convertible_v<U const&, T>) ||
+                  !std::is_convertible_v<G const&, E>)
+        constexpr expected(expected<U,G>&&);
+
+        template <typename U = T>
+        explicit(!std::is_convertible_v<U&&,T>)
+            constexpr expected(U&&);
+
+        template <typename G = E>
+        constexpr expected(unexpected<G> const&);
+        template <typename G = E>
+        constexpr expected(unexpected<G>&&);
+
+        template <typename... Args>
+        constexpr explicit expected(std::in_place_t, Args&&...);
+        template <typename U, typename... Args>
+        constexpr explicit expected(std::in_place_t, std::inializer_list<U>&, Args&&...);
+        template <typename... Args>
+        constexpr explicit expected(unexpect_t, Args&&...);
+        template <typename U, typename... Args>
+        constexpr explicit expected(unexpect_t, std::initializer_list<U>&, Args&&...);
+
+        ~expected();
+
+        expected& operator=(expected const&);
+        expected& operator=(expected&&) noexcept(std::is_nothrow_move_constructible_v<T> &&
+                                                 std::is_nothrow_move_assignable_v<T>) {
+        template <typename U = T>
+        expected& operator=(U&&);
+        template <typename G = E>
+        expected& operator=(unexpected<G> const&);
+        template <typename G = E>
+        expected& operator=(unexpected<G>&&);
+
+        template <typename... Args>
+        T& emplace(Args&&...);
+        template <typename U, typename... Args>
+        T& emplace(std::initializer_list<U>&, Args&&...);
+
+        void swap(expected&) noexcept(std::is_nothrow_move_constructible_v<T> &&
+                                      std::is_nothrow_swappable_v<T> &&
+                                      std::is_nothrow_move_constructible_v<E> &&
+                                      std::is_nothrow_swappable_v<E>);
+
+        constexpr T* operator->();
+        constexpr T const* operator->() const;
+        constexpr T& operator*() &;
+        constexpr T const& operator*() const &;
+        constexpr T&& operator*() &&;
+        constexpr T const&& operator*() const &&;
+
+        constexpr explicit operator bool() const noexcept;
+        constexpr bool has_value() const noexcept;
+        constexpr T& value() &;
+        constexpr T const& value() const &;
+        constexpr T&& value() &&;
+        constexpr T const&& value() const &&;
+
+        constexpr E& error() &;
+        cosntexpr E const& error() const &;
+        constexpr E&& error() &&;
+        constexpr E const&& error() cosnt &&;
+
+        template <typename U>
+        constexpr T value_or(U&&) const&;
+        temlpate <typename U>
+        constexpr T value_or(U&&) &&;
+
+        template <typename T1, typename E1, typename T2, typename E2>
+        friend constexpr bool operator==(expected<T1,E1> const&, expected<T2,E2> const&);
+        template <typename T1, typename E1, typename T2, typename E2>
+        friend constexpr bool operator!=(expected<T1,E1> const&, expected<T2,E2> const&);
+
+        template <typename T1, typename E1, typename T2>
+        friend constexpr bool operator==(expected<T1,E1> const&, T2 const&);
+        template <typename T1, typename E1, typename T2>
+        friend constexpr bool operator==(T2 const&, expected<T1,E1> const&);
+        template <typename T1, typename E1, typename T2>
+        friend constexpr bool operator!=(expected<T1,E1> const&, T2 const&);
+        template <typename T1, typename E1, typename T2>
+        friend constexpr bool operator!=(T2 const&, expected<T1,E1> const&);
+
+        template <typename T1, typename E1, typename E2>
+        friend constexpr bool operator==(expected<T1,E1> const&, unexpected<E2> const&);
+        template <typename T1, typename E1, typename E2>
+        friend constexpr bool operator==(unexpected<E2> const&, expected<T1,E1> const&);
+        template <typename T1, typename E1, typename E2>
+        friend constexpr bool operator!=(expected<T1,E1> const&, unexpected<E2> const&);
+        template <typename T1, typename E1, typename E2>
+        friend constexpr bool operator!=(unexpected<E2> const&, expected<T1,E1> const&);
+
+        template <typename T1, typename E1>
+        friend void swap(expected<T1,E1>& x, expected<T1,E1>& y) noexcept(noexcept(x.swap(y)));
+
+        #ifdef VIEN_EXPECTED_EXTENDED
+        template <typename F>
+        auto map(F&&) &;
+        template <typename F>
+        auto map(F&&) const &;
+        template <typename F>
+        auto map(F&&) &&;
+        template <typename F>
+        auto map(F&&) const &&;
+
+        template <typename F>
+        auto map_error(F&&) &;
+        template <typename F>
+        auto map_error(F&&) const &;
+        template <typename F>
+        auto map_error(F&&) &&;
+        template <typename F>
+        auto map_error(F&&) const &&;
+
+        template <typename F>
+        expected and_then(F&&) &;
+        template <typename F>
+        expected and_then(F&&) const &;
+        template <typename F>
+        expected and_then(F&&) &&;
+        template <typename F>
+        expected and_then(F&&) const &&;
+        #endif
+
+    private:
+
+        bool has_val;
+        union {
+            value_type val;
+            unexpected_type unexpect;
+        };
+};
+
+
+__ class template unexpected __
+
+template <typename E>
+class unexpected {
+    public:
+        template <typename Err = E>
+        constexpr explicit unexpected(Err&&);
+
+        template <typename... Args>
+        constexpr explicit unexpected(in_place_t, Args&&...);
+
+        template <typename U, typename... Args>
+        constexpr explicit unexpected(in_place_t, std::initializer_list<U>, Args&&...);
+
+        constexpr unexpected(unexpected const&) = default;
+        constexpr unexpected(unexpected&&) = default;
+
+        template <typename Err>
+        constexpr explicit(!std::is_convertible_v<Err, E>)
+            unexpected(unexpected<Err> const&);
+
+        template <typename Err>
+        constexpr explicit(!std::is_convertible_v<Err&&,E>)
+            unexpected(unexpected<Err>&&);
+
+        constexpr unexpected& operator=(unexpected const&) = default;
+        constexpr unexpected& operator=(unexpected&&) = default;
+        template <typename Err = E>
+        constexpr unexpected& operator=(unexpected<Err> const&);
+        template <typename Err = E>
+        constexpr unexpected& operator=(unexpected<Err>&&);
+
+        constexpr E& value() & noexcept;
+        constexpr E const& value() const & noexcept;
+        constexpr E&& value() && noexcept;
+        constexpr E const&& value() const && noexcept;
+
+        void swap(unexpected&) noexcept(std::is_nothrow_swappable_v<Err>);
+
+        template <typename E1, typename E2>
+        friend constexpr bool operator==(unexpected<E1> const&, unexpected<E2> const&);
+        template <typename E1, typename E2>
+        friend constexpr bool operator!=(unexpected<E1> const&, unexpected<E2> const&);
+
+    private:
+        E val_;
+};
+
+__ class template bad_expected_access __
+
+template <>
+class bad_expected_access<void> : public std::exception {
+    public:
+        explicit bad_expected_access() { };
+};
+
+template <typename E>
+class bad_expected_access : public bad_expected_access<void> {
+    public:
+        explicit bad_expected_access(E);
+        E& error() &;
+        E const& error() const &;
+        E&& error() &&;
+        E const&& error() const &&;
+        virtual char const* what() const noexcept override;
+    private:
+        E val_;
+};
+
+}
+}
+ */
 
 #include <initializer_list>
 #include <memory>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
-
-/* Define VIEN_EXPECTED_EXTENDED for functional
- * extensions */
 
 namespace vien {
 using in_place_t = std::in_place_t;
