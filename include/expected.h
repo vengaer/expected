@@ -917,16 +917,16 @@ class expected_interface_base : impl::expected_move_assign_base<T,E> {
         void store(Args&&... args);
 
         template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
-        constexpr T& internal_get_value() &;
+        constexpr U& internal_get_value() &;
 
         template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
-        constexpr T const& internal_get_value() const &;
+        constexpr U const& internal_get_value() const &;
 
         template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
-        constexpr T&& internal_get_value() &&;
+        constexpr U&& internal_get_value() &&;
 
         template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
-        constexpr T const&& internal_get_value() const &&;
+        constexpr U const&& internal_get_value() const &&;
 
         constexpr unexpected<E>& internal_get_unexpect() &;
         constexpr unexpected<E> const& internal_get_unexpect() const &;
@@ -1043,25 +1043,25 @@ void expected_interface_base<T,E>::store(Args&&... args) {
 
 template <typename T, typename E>
 template <typename U, typename>
-constexpr T& expected_interface_base<T,E>::internal_get_value() & {
+constexpr U& expected_interface_base<T,E>::internal_get_value() & {
     return base_t::internal_get_value();
 }
 
 template <typename T, typename E>
 template <typename U, typename>
-constexpr T const& expected_interface_base<T,E>::internal_get_value() const & {
+constexpr U const& expected_interface_base<T,E>::internal_get_value() const & {
     return base_t::internal_get_value();
 }
 
 template <typename T, typename E>
 template <typename U, typename>
-constexpr T&& expected_interface_base<T,E>::internal_get_value() && {
+constexpr U&& expected_interface_base<T,E>::internal_get_value() && {
     return std::move(base_t::internal_get_value());
 }
 
 template <typename T, typename E>
 template <typename U, typename>
-constexpr T const&& expected_interface_base<T,E>::internal_get_value() const && {
+constexpr U const&& expected_interface_base<T,E>::internal_get_value() const && {
     return std::move(base_t::internal_get_value());
 }
 
@@ -1176,11 +1176,6 @@ class expected : public impl::expected_interface_base<T,E> {
                    >>
         expected& operator=(U&&);
 
-        constexpr T& value() &;
-        constexpr T const& value() const &;
-        constexpr T&& value() &&;
-        constexpr T const&& value() const &&;
-
         template <typename... Args, 
                   typename = std::enable_if_t<
                       std::is_nothrow_constructible_v<T, Args&&...>
@@ -1201,6 +1196,11 @@ class expected : public impl::expected_interface_base<T,E> {
                                           std::is_nothrow_swappable_v<T> &&
                                           std::is_nothrow_move_constructible_v<E> &&
                                           std::is_nothrow_swappable_v<E>);
+
+        constexpr T& value() &;
+        constexpr T const& value() const &;
+        constexpr T&& value() &&;
+        constexpr T const&& value() const &&;
 
 };
 
@@ -1293,34 +1293,6 @@ expected<T,E>& expected<T,E>::operator=(U&& v) {
 }
 
 template <typename T, typename E>
-constexpr T& expected<T,E>::value() & {
-    if(!bool(*this))
-        throw bad_expected_access(this->error());
-    return this->internal_get_value();
-}
-
-template <typename T, typename E>
-constexpr T const& expected<T,E>::value() const & {
-    if(!bool(*this))
-        throw bad_expected_access(this->error());
-    return this->internal_get_value();
-}
-
-template <typename T, typename E>
-constexpr T&& expected<T,E>::value() && {
-    if(!bool(*this))
-        throw bad_expected_access(this->error());
-    return std::move(this->internal_get_value());
-}
-
-template <typename T, typename E>
-constexpr T const&& expected<T,E>::value() const && {
-    if(!bool(*this))
-        throw bad_expected_access(this->error());
-    return std::move(this->internal_get_value());
-}
-
-template <typename T, typename E>
 template <typename... Args, typename>
 T& expected<T,E>::emplace(Args&&... args) {
     if(bool(*this))
@@ -1404,6 +1376,14 @@ void expected<T,E>::swap(expected& rhs) noexcept(std::is_nothrow_move_constructi
         if constexpr(std::is_nothrow_move_constructible_v<E>) {
             unexpected<E> tmp = std::move(rhs.internal_get_unexpect());
             rhs.internal_get_unexpect().~unexpected<E>();
+
+            /* GCC erroneousely warns about throw; always calling terminate
+             * but swap is noexcept only if both T and E are nothrow move 
+             * constructible, meaning the catch(...) is never entered */
+            #if defined __GNUC__ && !defined __clang__
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Wterminate"
+            #endif
             try {
                 rhs.store(std::move(this->internal_get_value()));
                 this->internal_get_value().~T();
@@ -1413,6 +1393,9 @@ void expected<T,E>::swap(expected& rhs) noexcept(std::is_nothrow_move_constructi
                 rhs.store(unexpect, std::move(tmp));
                 throw;
             }
+            #if defined __GNUC__ && !defined __clang__
+            #pragma GCC diagnostic pop
+            #endif
         }
         else if constexpr(std::is_nothrow_move_constructible_v<T>) {
             T tmp = std::move(this->internal_get_value());
@@ -1429,6 +1412,34 @@ void expected<T,E>::swap(expected& rhs) noexcept(std::is_nothrow_move_constructi
         }
 
     }
+}
+
+template <typename T, typename E>
+constexpr T& expected<T,E>::value() & {
+    if(!bool(*this))
+        throw bad_expected_access(this->error());
+    return this->internal_get_value();
+}
+
+template <typename T, typename E>
+constexpr T const& expected<T,E>::value() const & {
+    if(!bool(*this))
+        throw bad_expected_access(this->error());
+    return this->internal_get_value();
+}
+
+template <typename T, typename E>
+constexpr T&& expected<T,E>::value() && {
+    if(!bool(*this))
+        throw bad_expected_access(this->error());
+    return std::move(this->internal_get_value());
+}
+
+template <typename T, typename E>
+constexpr T const&& expected<T,E>::value() const && {
+    if(!bool(*this))
+        throw bad_expected_access(this->error());
+    return std::move(this->internal_get_value());
 }
 
 template <typename E>
@@ -1486,8 +1497,6 @@ class expected<void, E> : public impl::expected_interface_base<void,E> {
                   typename = std::enable_if_t<sizeof...(Args) == 0>>
         constexpr explicit expected(in_place_t, Args&&...);
 
-        constexpr void value() const;
-
         void emplace();
 
         template <typename TT = void, typename EE = E,
@@ -1496,6 +1505,9 @@ class expected<void, E> : public impl::expected_interface_base<void,E> {
                   >>
         void swap(expected& rhs) noexcept(std::is_nothrow_move_constructible_v<E> &&
                                           std::is_nothrow_swappable_v<E>);
+
+        constexpr void value() const;
+
 };
 
 template <typename E>
@@ -1541,12 +1553,6 @@ constexpr expected<void, E>::expected(in_place_t, Args&&...) : base_t(impl::no_i
 }
 
 template <typename E>
-constexpr void expected<void,E>::value() const {
-    if(!bool(*this))
-        throw bad_expected_access(this->error());
-}
-
-template <typename E>
 void expected<void,E>::emplace() {
     if(!bool(*this)) {
         this->internal_get_unexpect().~unexpected<E>();
@@ -1576,6 +1582,12 @@ void expected<void,E>::swap(expected& rhs) noexcept(std::is_nothrow_move_constru
         rhs.internal_get_unexpect().~unexpected<E>();
         rhs.store();
     }
+}
+
+template <typename E>
+constexpr void expected<void,E>::value() const {
+    if(!bool(*this))
+        throw bad_expected_access(this->error());
 }
 
 template <typename E>
