@@ -40,4 +40,27 @@ TEST_CASE("Chaining maps yields correct result", "[expected][extended][map]") {
     REQUIRE("40" == e2);
 }
 
+TEST_CASE("map_error modifies value", "[expected][extended][map_error]") {
+    expected<std::string, int> e1("string");
+    expected<std::string, int> e2(unexpect, 10);
+
+    auto e3 = e1.map_error([](int) {
+        return double{};
+    });
+
+    REQUIRE(std::is_same_v<expected<std::string, double>, decltype(e3)>);
+    REQUIRE(e3.has_value());
+    REQUIRE(e3 == "string");
+
+    auto e4 = e2.map_error([](int i) {
+        return i * 200;
+    }).map_error([](int i) {
+        return std::to_string(i);
+    });
+
+    REQUIRE(std::is_same_v<expected<std::string, std::string>, decltype(e4)>);
+    REQUIRE(!bool(e4));
+    REQUIRE(e4 == unexpected("2000"));
+}
+
 #endif
