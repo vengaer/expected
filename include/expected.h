@@ -1632,11 +1632,6 @@ class unexpected {
 
     private:
         E val_;
-
-        /* Required for accessing val_ from instances with 
-         * other type params */
-        template <typename>
-        friend class unexpected;
 };
 
 template <typename E>
@@ -1660,34 +1655,34 @@ constexpr unexpected<E>::unexpected(in_place_t, std::initializer_list<U> il, Arg
 template <typename E>
 template <typename Err, typename>
 constexpr unexpected<E>::unexpected(unexpected<Err> const& e)
-    : val_(e.val_) { }
+    : val_(e.value()) { }
 
 template <typename E>
 template <typename Err>
 constexpr unexpected<E>::unexpected(unexpected<Err> const& e)
-    : val_(e.val_) { }
+    : val_(e.value()) { }
 
 template <typename E>
 template <typename Err, typename>
 constexpr unexpected<E>::unexpected(unexpected<Err>&& e)
-    : val_(std::move(e.val_)) { }
+    : val_(std::move(e.value())) { }
 
 template <typename E>
 template <typename Err>
 constexpr unexpected<E>::unexpected(unexpected<Err>&& e)
-    : val_(std::move(e.val_)) { }
+    : val_(std::move(e.value())) { }
 
 template <typename E>
 template <typename Err>
 constexpr unexpected<E>& unexpected<E>::operator=(unexpected<Err> const& e) {
-    val_ = e.val_;
+    val_ = e.value();
     return *this;
 }
 
 template <typename E>
 template <typename Err>
 constexpr unexpected<E>& unexpected<E>::operator=(unexpected<Err>&& e) {
-    val_ = std::move(e.val_);
+    val_ = std::move(e.value());
     return *this;
 }
 
