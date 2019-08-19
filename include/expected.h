@@ -6,8 +6,8 @@
  * Define VIEN_EXPECTED_EXTENDED for functional
  * extensions not in the proposal. */
 
-#ifndef EXPECTED_H
-#define EXPECTED_H
+#ifndef VIEN_EXPECTED_H
+#define VIEN_EXPECTED_H
 
 /*
     --expected synopsis--
