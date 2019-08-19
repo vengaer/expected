@@ -917,16 +917,16 @@ class expected_interface_base : impl::expected_move_assign_base<T,E> {
         void store(Args&&... args);
 
         template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
-        constexpr U& internal_get_value() &;
+        constexpr T& internal_get_value() &;
 
         template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
-        constexpr U const& internal_get_value() const &;
+        constexpr T const& internal_get_value() const &;
 
         template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
-        constexpr U&& internal_get_value() &&;
+        constexpr T&& internal_get_value() &&;
 
         template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
-        constexpr U const&& internal_get_value() const &&;
+        constexpr T const&& internal_get_value() const &&;
 
         constexpr unexpected<E>& internal_get_unexpect() &;
         constexpr unexpected<E> const& internal_get_unexpect() const &;
@@ -1043,25 +1043,25 @@ void expected_interface_base<T,E>::store(Args&&... args) {
 
 template <typename T, typename E>
 template <typename U, typename>
-constexpr U& expected_interface_base<T,E>::internal_get_value() & {
+constexpr T& expected_interface_base<T,E>::internal_get_value() & {
     return base_t::internal_get_value();
 }
 
 template <typename T, typename E>
 template <typename U, typename>
-constexpr U const& expected_interface_base<T,E>::internal_get_value() const & {
+constexpr T const& expected_interface_base<T,E>::internal_get_value() const & {
     return base_t::internal_get_value();
 }
 
 template <typename T, typename E>
 template <typename U, typename>
-constexpr U&& expected_interface_base<T,E>::internal_get_value() && {
+constexpr T&& expected_interface_base<T,E>::internal_get_value() && {
     return std::move(base_t::internal_get_value());
 }
 
 template <typename T, typename E>
 template <typename U, typename>
-constexpr U const&& expected_interface_base<T,E>::internal_get_value() const && {
+constexpr T const&& expected_interface_base<T,E>::internal_get_value() const && {
     return std::move(base_t::internal_get_value());
 }
 
@@ -1727,10 +1727,6 @@ template <>
 class bad_expected_access<void> : public std::exception {
     public:
         explicit bad_expected_access() { };
-
-        virtual char const* what() const noexcept override {
-            return "Attempt to access expected without value\n";
-        }
 };
 
 template <typename E>
@@ -1741,6 +1737,7 @@ class bad_expected_access : public bad_expected_access<void> {
         E const& error() const &;
         E&& error() &&;
         E const&& error() const &&;
+        virtual char const* what() const noexcept override;
     private:
         E val_;
 };
@@ -1767,6 +1764,11 @@ E&& bad_expected_access<E>::error() && {
 template <typename E>
 E const&& bad_expected_access<E>::error() const && {
     return std::move(val_);
+}
+
+template <typename E>
+char const* bad_expected_access<E>::what() const noexcept {
+    return "Attempt to access expected without value\n";
 }
 
 } /* namespace v1 */
