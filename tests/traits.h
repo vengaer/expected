@@ -36,6 +36,15 @@ struct internal_swap_is_noexcept
 template <typename T>
 inline bool constexpr internal_swap_is_noexcept_v =
     internal_swap_is_noexcept<T>::value;
+
+template <typename T>
+struct standard_swap_is_noexcept
+    : std::bool_constant<noexcept(std::swap(std::declval<T&>(), std::declval<T&>()))> { };
+
+template <typename T>
+inline bool constexpr standard_swap_is_noexcept_v =
+    standard_swap_is_noexcept<T>::value;
+
 } /* namespace vien */
 
 #define THROWS(expr, except)  \
