@@ -81,4 +81,12 @@ TEMPLATE_TEST_CASE("error() returns E", "[expected][error][accessor]", int, std:
                            decltype(std::declval<expected<double, TestType> const&>().error())>);
 }
 
+TEST_CASE("value_or() returns correct value", "[expected][accessor]") {
+    expected<std::string, int> e1(unexpect, 10);
+    expected<std::string, int> e2("value");
+
+    REQUIRE(e1.value_or("error") == "error");
+    REQUIRE(e2.value_or("error") == "value");
+}
+
 #endif
