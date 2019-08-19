@@ -52,10 +52,12 @@ TEST_CASE("std::swap specialization", "[unexpected][swap]") {
 }
 
 TEST_CASE("std::swap not availble if E not swappable", "[unexpected][swap]") {
-    struct non_swappable_t {
-        non_swappable_t& operator=(non_swappable_t&&) = delete;
+    struct non_swappable_t { 
+        non_swappable_t& operator=(non_swappable_t const&) = delete;
+        non_swappable_t& operator=(non_swappable_t&&) = default;
     };
     REQUIRE(!overloaded_for_swapping_v<unexpected<non_swappable_t>>);
+    REQUIRE(!std::is_swappable_v<non_swappable_t>);
 }
 
 #endif
