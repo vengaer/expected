@@ -7,6 +7,9 @@
 #include <type_traits>
 #include <utility>
 
+/* Define VIEN_EXPECTED_EXTENDED for functional
+ * extensions */
+
 namespace vien {
 using in_place_t = std::in_place_t;
 
@@ -258,6 +261,23 @@ struct expected_enable_swap<void,E>
 
 template <typename T, typename E>
 inline bool constexpr expected_enable_swap_v = expected_enable_swap<T,E>::value;
+
+#ifdef VIEN_EXPECTED_EXTENDED
+
+template <typename T>
+struct type_is {
+    using type = T;
+};
+
+template <typename T, typename E, typename F>
+struct expected_mapped_type
+    : type_is<expected<std::decay_t<decltype(std::declval<F>()(std::declval<T>()))>, E>>
+{ };
+
+template <typename T, typename E, typename F>
+using expected_mapped_type_t = typename expected_mapped_type<T,E,F>::type;
+
+#endif
 
 struct no_init_t {
     explicit no_init_t() = default;
@@ -1266,6 +1286,13 @@ class expected : public impl::expected_interface_base<T,E> {
         friend constexpr bool operator!=(expected<T1, E1> const&, T2 const&);
         template <typename T1, typename E1, typename T2>
         friend constexpr bool operator!=(T2 const&, expected<T1, E1> const&);
+
+        #ifdef VIEN_EXPECTED_EXTENDED
+        template <typename F>
+        auto map(F&& f) const &;
+        template <typename F>
+        auto map(F&& f) &&;
+        #endif
 };
 
 template <typename T, typename E>
@@ -1591,6 +1618,46 @@ template <typename T1, typename E1, typename T2>
 constexpr bool operator!=(T2 const& v, expected<T1, E1> const& x) {
     return bool(x) ? *x != v : false;
 }
+
+#ifdef VIEN_EXPECTED_EXTENDED
+
+template <typename T, typename E>
+template <typename F>
+auto expected<T,E>::map(F&& f) const & {
+    using result_t = impl::expected_mapped_type_t<T,E,F>;
+    using value_type = typename result_t::value_type;
+
+    if constexpr(std::is_void_v<value_type>) {
+        return bool(*this) ?
+            result_t{} :
+            result_t(unexpect, this->error());
+    }
+    else {
+        return bool(*this) ?
+                result_t(f(**this)) :
+                result_t(unexpect, this->error());
+    }
+}
+
+template <typename T, typename E>
+template <typename F>
+auto expected<T,E>::map(F&& f) && {
+    using result_t = impl::expected_mapped_type_t<T,E,F>;
+    using value_type = typename result_t::value_type;
+
+    if constexpr(std::is_void_v<value_type>) {
+        return bool(*this) ?
+            result_t{} :
+            result_t(unexpect, std::move(this->error()));
+    }
+    else {
+        return bool(*this) ?
+                result_t(f(std::move(**this))) :
+                result_t(unexpect, std::move(this->error()));
+    }
+}
+
+#endif
 
 template <typename E>
 class expected<void, E> : public impl::expected_interface_base<void,E> {
