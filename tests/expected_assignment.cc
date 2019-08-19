@@ -3,7 +3,6 @@
 #include "expected.h"
 #include "traits.h"
 #include "test_types.h"
-#include <algorithm>
 #include <initializer_list>
 #include <string>
 #include <type_traits>
@@ -210,7 +209,8 @@ TEST_CASE("Copy assignment satisfies strong exception guarantee", "[expected][as
         REQUIRE( THROWS(e1 = e2, std::runtime_error) );
         REQUIRE( !THROWS_ANY(e1.value()) );
 
-        /* e2.value() will copy E and throw a runtime_error if not reset */
+        /* e2.value() will copy E when throwing bad_expected_access which 
+         * throws a runtime_error if the count is not reset */
         nth_instance_throws_on_creation_t<2>::reset_instance_count();
 
         REQUIRE( THROWS(e2.value(), bad_expected_access<void>) );
