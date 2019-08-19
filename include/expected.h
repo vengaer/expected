@@ -1720,7 +1720,7 @@ void expected<void,E>::emplace() {
 template <typename E>
 template <typename, typename, typename>
 void expected<void,E>::swap(expected& rhs) noexcept(std::is_nothrow_move_constructible_v<E> &&
-                                                   std::is_nothrow_swappable_v<E>) {
+                                                    std::is_nothrow_swappable_v<E>) {
     using std::swap;
 
     // if(bool(*this) && bool(rhs))
@@ -1968,9 +1968,22 @@ char const* bad_expected_access<E>::what() const noexcept {
 } /* namespace vien */
 
 namespace std {
+
+template <typename T1, typename E1,
+          typename = std::enable_if_t<
+              std::is_void_v<decltype(std::declval<vien::expected<T1,E1>&>()
+                                        .swap(std::declval<vien::expected<T1,E1>&>()))
+              >
+          >>
+void swap(vien::expected<T1,E1>& x, vien::expected<T1,E1>& y) noexcept(noexcept(x.swap(y))) {
+    x.swap(y);
+}
+
 template <typename E1, 
           typename = std::enable_if_t<
-              std::is_void_v<decltype(std::declval<E1>().swap(std::declval<E1>()))>
+              std::is_void_v<decltype(std::declval<vien::unexpected<E1>>()
+                                        .swap(std::declval<vien::unexpected<E1>>()))
+              >
           >>
 void swap(vien::unexpected<E1>& x, vien::unexpected<E1>& y) noexcept(noexcept(x.swap(y))) {
     x.swap(y);
