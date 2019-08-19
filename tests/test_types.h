@@ -1,6 +1,7 @@
 #ifndef EXPECTED_TEST_TYPES_H
 #define EXPECTED_TEST_TYPES_H
 
+#include <numeric>
 #include <stdexcept>
 
 /* Test class template that throws an std::runtime_error when its 
@@ -18,7 +19,8 @@ struct nth_instance_throws_on_creation_t {
             throw std::runtime_error("copy ctor");
     }
 
-    nth_instance_throws_on_creation_t(nth_instance_throws_on_creation_t&& rhs) noexcept = default;
+    nth_instance_throws_on_creation_t(nth_instance_throws_on_creation_t&& rhs) noexcept 
+        : i{std::move(rhs.i)} { };
 
     nth_instance_throws_on_creation_t& 
         operator=(nth_instance_throws_on_creation_t const& rhs) {
@@ -29,7 +31,10 @@ struct nth_instance_throws_on_creation_t {
     }
 
     nth_instance_throws_on_creation_t& 
-        operator=(nth_instance_throws_on_creation_t&&) noexcept = default;
+        operator=(nth_instance_throws_on_creation_t&& rhs) noexcept {
+        i = std::move(rhs.i);
+        return *this;
+    };
 
     static void reset_instance_count() {
         instances = 0;
@@ -79,8 +84,7 @@ int throws_on_nth_move_t<N>::instances{0};
 struct variadic_t {
     template <typename... Args>
     variadic_t(std::initializer_list<int>& il, Args&&... args) noexcept { 
-        i = std::accumulate(std::begin(il), std::end(il), 0);
-        i += 1000 * (args + ...);
+        i = std::accumulate(std::begin(il), std::end(il), 1000 * (args + ...));
     }
     variadic_t(variadic_t const& rhs) : i{rhs.i} { }
     variadic_t& operator=(variadic_t const& rhs) {
