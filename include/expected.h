@@ -37,20 +37,19 @@ class expected {
                                 (std::is_void_v<T> || std::is_nothrow_move_constructible_v<T>))
 
         template <typename U, typename G>
-        explicit((!std::is_void_v<T> && !std::is_void_v<U> &&
-                  !std::is_convertible_v<U const&, T>) ||
-                  !std::is_convertible_v<G const&, E>)
-        constexpr expected(expected<U,G> const&);
+        constexpr explicit((!std::is_void_v<T> && !std::is_void_v<U> &&
+                            !std::is_convertible_v<U const&, T>) ||
+                            !std::is_convertible_v<G const&, E>)
+        expected(expected<U,G> const&);
 
         template <typename U, typename G>
-        explicit((!std::is_void_v<T> && !std::is_void_v<U> &&
-                  !std::is_convertible_v<U const&, T>) ||
-                  !std::is_convertible_v<G const&, E>)
-        constexpr expected(expected<U,G>&&);
+        constexpr explicit((!std::is_void_v<T> && !std::is_void_v<U> &&
+                            !std::is_convertible_v<U const&, T>) ||
+                            !std::is_convertible_v<G const&, E>)
+        expected(expected<U,G>&&);
 
         template <typename U = T>
-        explicit(!std::is_convertible_v<U&&,T>)
-            constexpr expected(U&&);
+        constexpr explicit(!std::is_convertible_v<U&&,T>) expected(U&&);
 
         template <typename G = E>
         constexpr expected(unexpected<G> const&);
