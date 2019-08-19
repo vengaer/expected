@@ -103,4 +103,46 @@ TEST_CASE("map_error modifies error", "[expected][extended][map_error]") {
     REQUIRE(e6 == unexpected(20));
 }
 
+TEST_CASE("and_then yields correct values", "[expected][extended][and_then]") {
+    auto squared = [](int i) { return i * i; };
+    expected<int, std::string> e1(2);
+
+    auto e2 = e1.and_then(squared).and_then(squared);
+    REQUIRE(std::is_same_v<decltype(e1), decltype(e2)>);
+    REQUIRE(e2 == 16);
+
+    e2 = e2.and_then(squared);
+    REQUIRE(std::is_same_v<decltype(e1), decltype(e2)>);
+    REQUIRE(e2 == 256);
+
+    expected<int, std::string> e3(unexpect, "string");
+    auto e4 = e3.and_then(squared).and_then(squared);
+
+    REQUIRE(std::is_same_v<decltype(e3), decltype(e4)>);
+    REQUIRE(!bool(e4));
+    REQUIRE(e4 == unexpected("string"));
+}
+
+TEST_CASE("and_then creates no unnecessary", "[expected][extended][and_then]") {
+    static int copies = 0;
+    static int moves = 0;
+    struct count_ops_t {
+        count_ops_t() = default;
+        count_ops_t(count_ops_t const&) { ++copies; }
+        count_ops_t(count_ops_t&&) { ++moves; }
+    };
+
+    expected<count_ops_t, int> e1{};
+
+    auto e2 = std::move(e1).and_then([](count_ops_t&& i) {
+        return std::move(i);
+    }).and_then([](count_ops_t&& i) {
+        return std::move(i);
+    });
+
+    REQUIRE(copies == 0);
+    REQUIRE(moves == 4);
+    REQUIRE(bool(e2));
+}
+
 #endif
