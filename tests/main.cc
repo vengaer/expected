@@ -3,6 +3,7 @@
 #include "catch.hpp"
 #else
 #include "expected.h"
+#include "test_types.h"
 #include "traits.h"
 #include <iostream>
 #include <string>
@@ -12,17 +13,6 @@
 
 int main() {
     using namespace vien;
-
-    PRINT_BOOL_EXPR(
-        std::is_convertible_v<expected<int, double>, expected<double, double>>
-    )
-    PRINT_BOOL_EXPR(
-        THROWS(throw 20.0;, int)
-    )
-    PRINT_BOOL_EXPR(
-        std::is_constructible_v<std::vector<int>, std::initializer_list<int>>
-    )
-    
 
     return 0;
 }
