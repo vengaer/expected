@@ -1197,6 +1197,14 @@ class expected : public impl::expected_interface_base<T,E> {
                                           std::is_nothrow_move_constructible_v<E> &&
                                           std::is_nothrow_swappable_v<E>);
 
+        constexpr T* operator->();
+        constexpr T const* operator->() const;
+
+        constexpr T& operator*() &;
+        constexpr T const& operator*() const &;
+        constexpr T&& operator*() &&;
+        constexpr T const&& operator*() const &&;
+
         constexpr T& value() &;
         constexpr T const& value() const &;
         constexpr T&& value() &&;
@@ -1412,6 +1420,36 @@ void expected<T,E>::swap(expected& rhs) noexcept(std::is_nothrow_move_constructi
         }
 
     }
+}
+
+template <typename T, typename E>
+constexpr T* expected<T,E>::operator->() {
+    return std::addressof(this->internal_get_value());
+}
+
+template <typename T, typename E>
+constexpr T const* expected<T,E>::operator->() const {
+    return std::addressof(this->internal_get_value());
+}
+
+template <typename T, typename E>
+constexpr T& expected<T,E>::operator*() & {
+    return this->internal_get_value();
+}
+
+template <typename T, typename E>
+constexpr T const& expected<T,E>::operator*() const & {
+    return this->internal_get_value();
+}
+
+template <typename T, typename E>
+constexpr T&& expected<T,E>::operator*() && {
+    return std::move(this->internal_get_value());
+}
+
+template <typename T, typename E>
+constexpr T const&& expected<T,E>::operator*() const && {
+    return std::move(this->internal_get_value());
 }
 
 template <typename T, typename E>
