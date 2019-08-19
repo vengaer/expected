@@ -1619,7 +1619,10 @@ class unexpected {
         constexpr E&& value() && noexcept;
         constexpr E const&& value() const && noexcept;
 
-        template <typename Err = E, typename = std::enable_if_t<std::is_swappable_v<Err>>>
+        template <typename Err = E, 
+                  typename = std::enable_if_t<
+                      std::is_swappable_v<Err>
+                  >>
         void swap(unexpected&) noexcept(std::is_nothrow_swappable_v<Err>);
 
         template <typename E1, typename E2>
@@ -1775,9 +1778,11 @@ E const&& bad_expected_access<E>::error() const && {
 } /* namespace vien */
 
 namespace std {
-template <typename E1>
-std::enable_if_t<std::is_swappable_v<E1>> 
-swap(vien::unexpected<E1>& x, vien::unexpected<E1>& y) noexcept(noexcept(x.swap(y))) {
+template <typename E1, 
+          typename = std::enable_if_t<
+              std::is_void_v<decltype(std::declval<E1>().swap(std::declval<E1>()))>
+          >>
+void swap(vien::unexpected<E1>& x, vien::unexpected<E1>& y) noexcept(noexcept(x.swap(y))) {
     x.swap(y);
 }
 }
