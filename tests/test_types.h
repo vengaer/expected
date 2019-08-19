@@ -83,7 +83,7 @@ int throws_on_nth_move_t<N>::instances{0};
 
 struct variadic_t {
     template <typename... Args>
-    variadic_t(std::initializer_list<int>& il, Args&&... args) noexcept { 
+    variadic_t(std::initializer_list<int>& il, Args&&... args) noexcept : i{0} { 
         i = std::accumulate(std::begin(il), std::end(il), 1000 * (args + ...));
     }
     variadic_t(variadic_t const& rhs) : i{rhs.i} { }
