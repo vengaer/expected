@@ -733,7 +733,7 @@ struct expected_construction_base : expected_base<T,E> {
         return std::move(this->unexpect_);
     }
 
-    constexpr bool has_value() const {
+    constexpr bool has_value() const noexcept {
         return this->has_val_;
     }
 };
@@ -772,7 +772,7 @@ struct expected_construction_base<void, E> : expected_base<void,E> {
         return std::move(this->unexpect_);
     }
 
-    constexpr bool has_value() const {
+    constexpr bool has_value() const noexcept {
         return this->has_val_;
     }
 };
