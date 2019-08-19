@@ -277,6 +277,17 @@ struct expected_mapped_type
 template <typename T, typename E, typename F>
 using expected_mapped_type_t = typename expected_mapped_type<T,E,F>::type;
 
+template <typename T, typename E, typename F>
+struct expected_mapped_error_type
+    : type_is<expected<T, std::decay_t<decltype(std::declval<F>()(std::declval<E>()))>>>
+{
+    static_assert(!std::is_void_v<decltype(std::declval<F>()(std::declval<E>()))>,
+                  "Cannot map error to void");
+};
+
+template <typename T, typename E, typename F>
+using expected_mapped_error_type_t = typename expected_mapped_error_type<T,E,F>::type;
+
 #endif
 
 struct no_init_t {
@@ -1289,9 +1300,13 @@ class expected : public impl::expected_interface_base<T,E> {
 
         #ifdef VIEN_EXPECTED_EXTENDED
         template <typename F>
-        auto map(F&& f) const &;
+        auto map(F&&) const &;
         template <typename F>
-        auto map(F&& f) &&;
+        auto map(F&&) const &&;
+        template <typename F>
+        auto map_error(F&&) const &;
+        template <typename F>
+        auto map_error(F&&) const &&;
         #endif
 };
 
@@ -1641,7 +1656,7 @@ auto expected<T,E>::map(F&& f) const & {
 
 template <typename T, typename E>
 template <typename F>
-auto expected<T,E>::map(F&& f) && {
+auto expected<T,E>::map(F&& f) const && {
     using result_t = impl::expected_mapped_type_t<T,E,F>;
     using value_type = typename result_t::value_type;
 
@@ -1655,6 +1670,28 @@ auto expected<T,E>::map(F&& f) && {
                 result_t(f(std::move(**this))) :
                 result_t(unexpect, std::move(this->error()));
     }
+}
+
+template <typename T, typename E>
+template <typename F>
+auto expected<T,E>::map_error(F&& f) const & {
+    using result_t = impl::expected_mapped_error_type_t<T,E,F>;
+    static_assert(!std::is_void_v<typename result_t::error_type>);
+
+    return bool(*this) ?
+            result_t(**this) :
+            result_t(unexpect, f(this->error()));
+}
+
+template <typename T, typename E>
+template <typename F>
+auto expected<T,E>::map_error(F&& f) const && {
+    using result_t = impl::expected_mapped_error_type_t<T,E,F>;
+    static_assert(!std::is_void_v<typename result_t::error_type>);
+
+    return bool(*this) ?
+            result_t(std::move(**this)) :
+            result_t(unexpect, f(std::move(this->error())));
 }
 
 #endif
