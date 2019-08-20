@@ -167,7 +167,6 @@ class expected {
         #endif
 
     private:
-
         bool has_val;
         union {
             value_type val;
@@ -219,6 +218,9 @@ class unexpected {
         friend constexpr bool operator==(unexpected<E1> const&, unexpected<E2> const&);
         template <typename E1, typename E2>
         friend constexpr bool operator!=(unexpected<E1> const&, unexpected<E2> const&);
+
+        template <typename E1>
+        friend void swap(unexpected<E1>& x, unexpected<E1>& y) noexcept(noexcept(x.swap(y)));
 
     private:
         E val_;
