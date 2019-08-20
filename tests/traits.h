@@ -45,6 +45,25 @@ template <typename T>
 inline bool constexpr standard_swap_is_noexcept_v =
     standard_swap_is_noexcept<T>::value;
 
+template <typename T>
+struct has_map_range_helper {
+    T operator()(T) const {
+        return T{};
+    }
+};
+
+template <typename T, typename = void>
+struct has_map_range : std::false_type { };
+
+template <typename T>
+struct has_map_range<T, std::void_t<
+        decltype(std::declval<T&>().map_range(
+            std::declval<has_map_range_helper<typename T::value_type::value_type>>()))>>
+    : std::true_type { };
+
+template <typename T>
+inline bool constexpr has_map_range_v = has_map_range<T>::value;
+
 } /* namespace vien */
 
 #define THROWS(expr, except)  \
