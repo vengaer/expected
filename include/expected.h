@@ -139,13 +139,13 @@ class expected {
 
         #ifdef VIEN_EXPECTED_EXTENDED
         template <typename F>
-        expected<std::decay_t<std::invoke_result_t<T>>, E> map(F&&) &;
+        expected<std::decay_t<std::invoke_result_t<F,T>>, E> map(F&&) &;
         template <typename F>
-        expected<std::decay_t<std::invoke_result_t<T>>, E> map(F&&) const &;
+        expected<std::decay_t<std::invoke_result_t<F,T>>, E> map(F&&) const &;
         template <typename F>
-        expected<std::decay_t<std::invoke_result_t<T>>, E> map(F&&) &&;
+        expected<std::decay_t<std::invoke_result_t<F,T>>, E> map(F&&) &&;
         template <typename F>
-        expected<std::decay_t<std::invoke_result_t<T>>, E> map(F&&) const &&;
+        expected<std::decay_t<std::invoke_result_t<F,T>>, E> map(F&&) const &&;
 
         template <typename F>
         auto map_range(F&&) &;
@@ -157,13 +157,13 @@ class expected {
         auto map_range(F&&) const &&;
 
         template <typename F>
-        expected<T, std::decay_t<std::invoke_result_t<E>>> map_error(F&&) &;
+        expected<T, std::decay_t<std::invoke_result_t<F,E>>> map_error(F&&) &;
         template <typename F>
-        expected<T, std::decay_t<std::invoke_result_t<E>>> map_error(F&&) const &;
+        expected<T, std::decay_t<std::invoke_result_t<F,E>>> map_error(F&&) const &;
         template <typename F>
-        expected<T, std::decay_t<std::invoke_result_t<E>>> map_error(F&&) &&;
+        expected<T, std::decay_t<std::invoke_result_t<F,E>>> map_error(F&&) &&;
         template <typename F>
-        expected<T, std::decay_t<std::invoke_result_t<E>>> map_error(F&&) const &&;
+        expected<T, std::decay_t<std::invoke_result_t<F,E>>> map_error(F&&) const &&;
 
         template <typename F>
         expected and_then(F&&) &;
