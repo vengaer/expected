@@ -148,6 +148,15 @@ class expected {
         expected<std::decay_t<std::invoke_result_t<T>>, E> map(F&&) const &&;
 
         template <typename F>
+        auto map_range(F&&) &;
+        template <typename F>
+        auto map_range(F&&) const &;
+        template <typename F>
+        auto map_range(F&&) &&;
+        template <typename F>
+        auto map_range(F&&) const &&;
+
+        template <typename F>
         expected<T, std::decay_t<std::invoke_result_t<E>>> map_error(F&&) &;
         template <typename F>
         expected<T, std::decay_t<std::invoke_result_t<E>>> map_error(F&&) const &;
@@ -2444,7 +2453,7 @@ expected<T,E>::map_range(F&& f) && {
         container_t tmp;
         std::transform(std::begin(**this), std::end(**this),
                        impl::insert_iterator_t<container_t>(tmp),
-                        std::forward<F>(f));
+                       std::forward<F>(f));
 
         return result_t(std::move(tmp));
     }
@@ -2475,7 +2484,7 @@ expected<T,E>::map_range(F&& f) const && {
         container_t tmp;
         std::transform(std::begin(**this), std::end(**this),
                        impl::insert_iterator_t<container_t>(tmp),
-                        std::forward<F>(f));
+                       std::forward<F>(f));
 
         return result_t(std::move(tmp));
     }
