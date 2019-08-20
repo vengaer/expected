@@ -258,7 +258,48 @@ class bad_expected_access : public bad_expected_access<void> {
 #include <utility>
 
 #ifdef VIEN_EXPECTED_EXTENDED
+#include <algorithm>
+#include <cstddef>
 #include <functional>
+#include <iterator>
+#endif
+
+#ifdef VIEN_EXPECTED_EXTENDED
+/* Forward declare necessary std members */
+namespace std {
+    template <class>
+    class Allocator;
+
+    template <typename, std::size_t>
+    struct array;
+
+    template <class, class>
+    class forward_list;
+
+    template <class, class, class>
+    class set;
+
+    template <class, class, class>
+    class map;
+
+    template <class, class, class>
+    class multiset;
+
+    template <class, class, class>
+    class multimap;
+
+    template <class, class, class, class>
+    class unordered_set;
+
+    template <class, class, class, class, class>
+    class unordered_map;
+
+    template <class, class, class, class>
+    class unordered_multiset;
+
+    template <class, class, class, class, class>
+    class unordered_multimap;
+}
 #endif
 
 namespace vien {
@@ -344,7 +385,6 @@ template <typename T>
 inline bool constexpr is_nothrow_move_constructible_or_void_v =
     is_nothrow_move_constructible_or_void<T>::value;
 
-/* Used for enabling copy conversion ctor */
 template <typename T, typename E, typename U, typename G>
 struct expected_enable_copy_conversion
     : std::bool_constant< std::is_constructible_v<T, U const&> &&
@@ -373,7 +413,6 @@ template <typename T, typename E, typename U, typename G>
 inline bool constexpr expected_enable_copy_conversion_v =
     expected_enable_copy_conversion<T,E,U,G>::value;
 
-/* Used for enabling non-explicit copy conversion */
 template <typename T, typename E, typename U, typename G>
 struct expected_enable_implicit_copy_conversion
     : std::bool_constant<std::is_convertible_v<U const&, T> &&
@@ -387,7 +426,6 @@ template <typename T, typename E, typename U, typename G>
 inline bool constexpr expected_enable_implicit_copy_conversion_v =
     expected_enable_implicit_copy_conversion<T,E,U,G>::value;
 
-/* Used for enabling move construction */
 template <typename T, typename E, typename U, typename G>
 struct expected_enable_move_conversion
     : std::bool_constant< std::is_constructible_v<T, U&&> &&
@@ -520,11 +558,13 @@ struct type_is {
     using type = T;
 };
 
+/* Type returned by expected<T,E>::map */
 template <typename T, typename E, typename F>
 struct expected_mapped_type
     : type_is<expected<std::decay_t<std::invoke_result_t<F, T>>, E>>
 { };
 
+/* Type returned by expected<void,E>::map */
 template <typename E, typename F>
 struct expected_mapped_type<void, E, F>
     : type_is<expected<std::decay_t<std::invoke_result_t<F>>, E>> { };
@@ -532,6 +572,7 @@ struct expected_mapped_type<void, E, F>
 template <typename T, typename E, typename F>
 using expected_mapped_type_t = typename expected_mapped_type<T,E,F>::type;
 
+/* Type returned by expected<T,E>::map_error. T may be void */
 template <typename T, typename E, typename F>
 struct expected_mapped_error_type
     : type_is<expected<T, std::decay_t<std::invoke_result_t<F,E>>>>
@@ -542,6 +583,294 @@ struct expected_mapped_error_type
 
 template <typename T, typename E, typename F>
 using expected_mapped_error_type_t = typename expected_mapped_error_type<T,E,F>::type;
+
+/* Check if type is an allocator */
+template <typename, typename = void>
+struct is_allocator : std::false_type { };
+
+/* true iff T has allocate and deallocate functions with
+ * correct signatures */
+template <typename T>
+struct is_allocator<T, std::void_t<
+    decltype(std::declval<T&>().allocate(std::declval<std::size_t>())),
+    decltype(std::declval<T&>().deallocate(
+        std::declval<decltype(std::declval<T&>().allocate(std::declval<std::size_t>()))>(),
+        std::declval<std::size_t>())
+    )>>
+    : std::true_type { };
+
+template <typename T>
+inline bool constexpr is_allocator_v = is_allocator<T>::value;
+
+/* Check if type is a comparator */
+template <typename, typename = void>
+struct is_comparator : std::false_type { };
+
+/* true iff has a binary operator() that returns bool */
+template <template <typename> class C, typename T>
+struct is_comparator<C<T>, std::enable_if_t<
+    std::is_same_v<bool, decltype(std::declval<C<T>>()(std::declval<T&>(), std::declval<T&>()))>
+>> : std::true_type { };
+
+template <typename T>
+inline bool constexpr is_comparator_v = is_comparator<T>::value;
+
+/* Check if type is generated from std::hash */
+template <typename>
+struct is_hash : std::false_type { };
+
+template <typename T>
+struct is_hash<std::hash<T>> : std::true_type { };
+
+template <typename T>
+inline bool constexpr is_hash_v = is_hash<T>::value;
+
+/* Rebind unary type argument template */
+template <typename, typename>
+struct rebind_unary_template;
+
+/* Rebind Template<From> to Template<To> */
+template <template <typename> class Template, typename From , typename To>
+struct rebind_unary_template<Template<From>, To> : type_is<Template<To>> { };
+
+template <typename Template, typename T>
+using rebind_unary_template_t = typename rebind_unary_template<Template, T>::type;
+
+/* If A is an allocator, rebind its value_type to T, otherwise,
+ * do nothing */
+template <typename A, typename, typename = void>
+struct rebind_if_alloc : type_is<A> { };
+
+template <typename A, typename T>
+struct rebind_if_alloc<A, T, std::enable_if_t<is_allocator_v<A>>>
+    : type_is<typename std::allocator_traits<A>::template rebind_alloc<T>> { };
+
+
+template <typename A, typename T>
+using rebind_if_alloc_t = typename rebind_if_alloc<A,T>::type;
+
+/* If C is a comparator, rebind it to compare T, otherwise, do nothing */
+template <typename C, typename, typename = void>
+struct rebind_if_comparator : type_is<C> { };
+
+template <typename C, typename T>
+struct rebind_if_comparator<C, T, std::enable_if_t<is_comparator_v<C>>>
+    : type_is<rebind_unary_template_t<C,T>> { };
+
+template <typename C, typename T>
+using rebind_if_comparator_t = typename rebind_if_comparator<C,T>::type;
+
+/* If H is generated from std::hash, rebind its "value type" to T */
+template <typename H, typename, typename = void>
+struct rebind_if_hash : type_is<H> { };
+
+template <typename H, typename T>
+struct rebind_if_hash<H, T, std::enable_if_t<is_hash_v<H>>>
+    : type_is<rebind_unary_template_t<H,T>> { };
+
+template <typename C, typename T>
+using rebind_if_hash_t = typename rebind_if_hash<C,T>::type;
+
+/* Rebind container value_type, allocator_type, compare and
+ * hasher typedefs */
+template <typename, typename>
+struct rebind;
+
+/* Container is a template, rebind value_type from F to T,
+ * allocator<F> (if any) to allocator<T>,
+ * compare<F> (if any) to compare<T>, and
+ * hasher<F> (if any) to hasher<T>*/
+template <template <typename, typename...> class Container,
+          typename F, typename T,
+          typename... Args>
+struct rebind<Container<F, Args...>, T>
+    : type_is<Container<T,
+        rebind_if_hash_t<rebind_if_comparator_t<rebind_if_alloc_t<Args, T>, T>, T>...>
+      > { };
+
+/* Container is a standard array, rebind value_type from F to T
+ * (size remains the same) */
+template <typename F, std::size_t N, typename T>
+struct rebind<std::array<F,N>, T> : type_is<std::array<T,N>> { };
+
+template <typename C, typename T>
+using rebind_t = typename rebind<C,T>::type;
+
+/* Check if T is a container */
+template <typename T, typename = void>
+struct is_container : std::false_type { };
+
+/* True iff std::begin and std::end are overloaded for Container */
+template <typename T>
+struct is_container<T, std::void_t<decltype(std::begin(std::declval<T&>())),
+                                   decltype(std::end(std::declval<T&>()))>>
+    : std::true_type { };
+
+template <typename T>
+inline bool constexpr is_container_v = is_container<T>::value;
+
+/* Get value_type of T, if available. Otherwise, return T */
+template <typename T, typename = void>
+struct value_type_of : type_is<T> { };
+
+template <typename T>
+struct value_type_of<T, std::void_t<typename T::value_type>>
+    : type_is<typename T::value_type> { };
+
+template <typename T>
+using value_type_of_t = typename value_type_of<T>::type;
+
+/* Output iterator for std::array<T,N> */
+template <typename>
+class array_insert_iterator;
+
+template <typename T, std::size_t N>
+class array_insert_iterator<std::array<T, N>> {
+    public:
+        using iterator_category = std::output_iterator_tag;
+        using value_type = void;
+        using difference_type = void;
+        using pointer = void;
+        using reference = void;
+        using container_type = std::array<T,N>;
+
+        constexpr array_insert_iterator() noexcept = default;
+        constexpr array_insert_iterator(std::array<T,N>& c)
+            : ctr_{std::addressof(c)} { }
+
+        constexpr array_insert_iterator& operator=(T const& v) {
+            if(idx_ >= N)
+                throw std::out_of_range("Array insertion out of bounds");
+            (*ctr_)[idx_++] = v;
+            return *this;
+        }
+
+        constexpr array_insert_iterator& operator=(T&& v) {
+            if(idx_ >= N)
+                throw std::out_of_range("Array insertion out of bounds");
+            (*ctr_)[idx_++] = std::move(v);
+            return *this;
+        }
+
+        constexpr array_insert_iterator& operator*() {
+            return *this;
+        }
+
+        constexpr array_insert_iterator& operator++() {
+            return *this;
+        }
+
+        constexpr array_insert_iterator operator++(int) {
+            auto cpy = *this;
+            return cpy;
+        }
+
+    private:
+        std::array<T,N>* ctr_;
+        std::size_t idx_{0};
+};
+
+/* Output iterator for types whose only means
+ * of insertion are through call to unary insert */
+template <typename Container>
+class ordered_insert_iterator {
+    public:
+        using iterator_category = std::output_iterator_tag;
+        using value_type = void;
+        using difference_type = void;
+        using pointer = void;
+        using reference = void;
+        using container_type = Container;
+
+        constexpr ordered_insert_iterator() noexcept = default;
+        constexpr ordered_insert_iterator(Container& c)
+            : ctr_{std::addressof(c)} { }
+
+        constexpr ordered_insert_iterator&
+            operator=(typename Container::value_type const& v) {
+            ctr_->insert(v);
+            return *this;
+        }
+
+        constexpr ordered_insert_iterator&
+            operator=(typename Container::value_type && v) {
+            ctr_->insert(std::move(v));
+            return *this;
+        }
+
+        constexpr ordered_insert_iterator& operator*() {
+            return *this;
+        }
+
+        constexpr ordered_insert_iterator& operator++() {
+            return *this;
+        }
+
+        constexpr ordered_insert_iterator operator++(int) {
+            auto cpy = *this;
+            return cpy;
+        }
+
+    private:
+        Container* ctr_;
+};
+
+/* Get suitable output iterator Container */
+template <typename Container, typename = void>
+struct insert_iterator;
+
+/* If type names push_back, use std::back_insert_iterator */
+template <typename Container>
+struct insert_iterator<Container, std::void_t<
+    decltype(std::declval<Container&>().push_back(
+        std::declval<value_type_of_t<Container>>()
+    ))>> : type_is<std::back_insert_iterator<Container>> { };
+
+/* Use array_insert_iterator for std::array */
+template <typename T, std::size_t N>
+struct insert_iterator<std::array<T,N>>
+    : type_is<array_insert_iterator<std::array<T,N>>> { };
+
+/* Use std::front_insert_iterator for std::forward_list */
+template <typename T, typename Alloc>
+struct insert_iterator<std::forward_list<T, Alloc>>
+    : type_is<std::front_insert_iterator<std::forward_list<T, Alloc>>> { };
+
+/* Use ordered_insert_iterator for associative containers */
+template <typename T, typename... Args>
+struct insert_iterator<std::set<T, Args...>>
+    : type_is<ordered_insert_iterator<std::set<T, Args...>>> { };
+
+template <typename Key, typename T, typename... Args>
+struct insert_iterator<std::map<Key, T, Args...>>
+    : type_is<ordered_insert_iterator<std::map<Key, T, Args...>>> { };
+
+template <typename T, typename... Args>
+struct insert_iterator<std::multiset<T, Args...>>
+    : type_is<ordered_insert_iterator<std::multiset<T, Args...>>> { };
+
+template <typename Key, typename T, typename... Args>
+struct insert_iterator<std::multimap<Key, T, Args...>>
+    : type_is<ordered_insert_iterator<std::multimap<Key, T, Args...>>> { };
+
+template <typename T, typename... Args>
+struct insert_iterator<std::unordered_set<T, Args...>>
+    : type_is<ordered_insert_iterator<std::unordered_set<T, Args...>>> { };
+
+template <typename Key, typename T, typename... Args>
+struct insert_iterator<std::unordered_map<Key, T, Args...>>
+    : type_is<ordered_insert_iterator<std::unordered_map<Key, T, Args...>>> { };
+
+template <typename T, typename... Args>
+struct insert_iterator<std::unordered_multiset<T, Args...>>
+    : type_is<ordered_insert_iterator<std::unordered_multiset<T, Args...>>> { };
+
+template <typename Key, typename T, typename... Args>
+struct insert_iterator<std::unordered_multimap<Key, T, Args...>>
+    : type_is<ordered_insert_iterator<std::unordered_multimap<Key, T, Args...>>> { };
+
+template <typename Container>
+using insert_iterator_t = typename insert_iterator<Container>::type;
 
 #endif
 
@@ -1567,6 +1896,42 @@ class expected : public impl::expected_interface_base<T,E> {
         expected<std::decay_t<std::invoke_result_t<F,T>>, E>
              map(F&&) const &&;
 
+        template <typename F, typename TT = T,
+                  typename = std::enable_if_t<
+                      impl::is_container_v<TT>
+                  >>
+        expected<impl::rebind_t<T, std::decay_t<
+                                        std::invoke_result_t<F, impl::value_type_of_t<T>>>>,
+                 E>
+            map_range(F&&) &;
+
+        template <typename F, typename TT = T,
+                  typename = std::enable_if_t<
+                      impl::is_container_v<TT>
+                  >>
+        expected<impl::rebind_t<T, std::decay_t<
+                                        std::invoke_result_t<F, impl::value_type_of_t<T>>>>,
+                 E>
+            map_range(F&&) const &;
+
+        template <typename F, typename TT = T,
+                  typename = std::enable_if_t<
+                      impl::is_container_v<TT>
+                  >>
+        expected<impl::rebind_t<T, std::decay_t<
+                                        std::invoke_result_t<F, impl::value_type_of_t<T>>>>,
+                 E>
+            map_range(F&&) &&;
+
+        template <typename F, typename TT = T,
+                  typename = std::enable_if_t<
+                      impl::is_container_v<TT>
+                  >>
+        expected<impl::rebind_t<T, std::decay_t<
+                                        std::invoke_result_t<F, impl::value_type_of_t<T>>>>,
+                 E>
+            map_range(F&&) const &&;
+
         template <typename F>
         expected<T, std::decay_t<std::invoke_result_t<F,E>>>
             map_error(F&&) &;
@@ -2002,6 +2367,117 @@ expected<T,E>::map(F&& f) const && {
         return bool(*this) ?
                 result_t(std::invoke(std::forward<F>(f), std::move(**this))) :
                 result_t(unexpect, std::move(this->error()));
+    }
+}
+
+template <typename T, typename E>
+template <typename F, typename, typename>
+[[nodiscard]]
+expected<
+    impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>, E
+>
+expected<T,E>::map_range(F&& f) & {
+    using container_t =
+        impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>;
+
+    using result_t = expected<container_t, E>;
+
+    if(!bool(*this))
+        return result_t(unexpect, this->error());
+
+    container_t tmp;
+    std::transform(std::begin(**this), std::end(**this),
+                   impl::insert_iterator_t<container_t>(tmp),
+                   std::forward<F>(f));
+
+    return result_t(std::move(tmp));
+}
+
+template <typename T, typename E>
+template <typename F, typename, typename>
+[[nodiscard]]
+expected<
+    impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>, E
+>
+expected<T,E>::map_range(F&& f) const & {
+    using container_t =
+        impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>;
+
+    using result_t = expected<container_t, E>;
+
+    if(!bool(*this))
+        return result_t(unexpect, this->error());
+
+    container_t tmp;
+    std::transform(std::begin(**this), std::end(**this),
+                   impl::insert_iterator_t<container_t>(tmp),
+                   std::forward<F>(f));
+
+    return result_t(std::move(tmp));
+}
+
+template <typename T, typename E>
+template <typename F, typename, typename>
+[[nodiscard]]
+expected<
+    impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>, E
+>
+expected<T,E>::map_range(F&& f) && {
+    using container_t =
+        impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>;
+
+    using result_t = expected<container_t, E>;
+
+    if(!bool(*this))
+        return result_t(unexpect, std::move(this->error()));
+
+    /* T and container_t are the same, transform **this and move
+     * **this to new instance */
+    if constexpr(std::is_same_v<T, container_t>) {
+        std::transform(std::begin(**this), std::end(**this),
+                       std::begin(**this), std::forward<F>(f));
+
+        return result_t(std::move(**this));
+    }
+    /* T and container_t are not the same, must create new container */
+    else {
+        container_t tmp;
+        std::transform(std::begin(**this), std::end(**this),
+                       impl::insert_iterator_t<container_t>(tmp),
+                        std::forward<F>(f));
+
+        return result_t(std::move(tmp));
+    }
+}
+
+template <typename T, typename E>
+template <typename F, typename, typename>
+[[nodiscard]]
+expected<
+    impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>, E
+>
+expected<T,E>::map_range(F&& f) const && {
+    using container_t =
+        impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>;
+
+    using result_t = expected<container_t, E>;
+
+    if(!bool(*this))
+        return result_t(unexpect, std::move(this->error()));
+
+    if constexpr(std::is_same_v<T, container_t>) {
+        std::transform(std::begin(**this), std::end(**this),
+                       std::begin(**this), std::forward<F>(f));
+
+        return result_t(std::move(**this));
+    }
+    else {
+        container_t tmp;
+        std::transform(std::begin(**this), std::end(**this),
+                       impl::insert_iterator_t<container_t>(tmp),
+                        std::forward<F>(f));
+
+        return result_t(std::move(tmp));
     }
 }
 
