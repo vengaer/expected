@@ -139,22 +139,22 @@ class expected {
 
         #ifdef VIEN_EXPECTED_EXTENDED
         template <typename F>
-        auto map(F&&) &;
+        expected<std::decay_t<std::invoke_result_t<T>>, E> map(F&&) &;
         template <typename F>
-        auto map(F&&) const &;
+        expected<std::decay_t<std::invoke_result_t<T>>, E> map(F&&) const &;
         template <typename F>
-        auto map(F&&) &&;
+        expected<std::decay_t<std::invoke_result_t<T>>, E> map(F&&) &&;
         template <typename F>
-        auto map(F&&) const &&;
+        expected<std::decay_t<std::invoke_result_t<T>>, E> map(F&&) const &&;
 
         template <typename F>
-        auto map_error(F&&) &;
+        expected<T, std::decay_t<std::invoke_result_t<E>>> map_error(F&&) &;
         template <typename F>
-        auto map_error(F&&) const &;
+        expected<T, std::decay_t<std::invoke_result_t<E>>> map_error(F&&) const &;
         template <typename F>
-        auto map_error(F&&) &&;
+        expected<T, std::decay_t<std::invoke_result_t<E>>> map_error(F&&) &&;
         template <typename F>
-        auto map_error(F&&) const &&;
+        expected<T, std::decay_t<std::invoke_result_t<E>>> map_error(F&&) const &&;
 
         template <typename F>
         expected and_then(F&&) &;
@@ -1555,22 +1555,30 @@ class expected : public impl::expected_interface_base<T,E> {
 
         #ifdef VIEN_EXPECTED_EXTENDED
         template <typename F>
-        auto map(F&&) &;
+        expected<std::decay_t<std::invoke_result_t<F,T>>, E>
+            map(F&&) &;
         template <typename F>
-        auto map(F&&) const &;
+        expected<std::decay_t<std::invoke_result_t<F,T>>, E>
+            map(F&&) const &;
         template <typename F>
-        auto map(F&&) &&;
+        expected<std::decay_t<std::invoke_result_t<F,T>>, E>
+            map(F&&) &&;
         template <typename F>
-        auto map(F&&) const &&;
+        expected<std::decay_t<std::invoke_result_t<F,T>>, E>
+             map(F&&) const &&;
 
         template <typename F>
-        auto map_error(F&&) &;
+        expected<T, std::decay_t<std::invoke_result_t<F,E>>>
+            map_error(F&&) &;
         template <typename F>
-        auto map_error(F&&) const &;
+        expected<T, std::decay_t<std::invoke_result_t<F,E>>>
+            map_error(F&&) const &;
         template <typename F>
-        auto map_error(F&&) &&;
+        expected<T, std::decay_t<std::invoke_result_t<F,E>>>
+            map_error(F&&) &&;
         template <typename F>
-        auto map_error(F&&) const &&;
+        expected<T, std::decay_t<std::invoke_result_t<F,E>>>
+            map_error(F&&) const &&;
 
         template <typename F>
         expected and_then(F&&) &;
@@ -1912,7 +1920,9 @@ constexpr bool operator!=(T2 const& v, expected<T1, E1> const& x) {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-auto expected<T,E>::map(F&& f) & {
+expected<std::decay_t<std::invoke_result_t<F,T>>, E>
+expected<T,E>::map(F&& f) & {
+
     using result_t = impl::expected_mapped_type_t<T,E,F>;
     using value_type = typename result_t::value_type;
 
@@ -1932,7 +1942,9 @@ auto expected<T,E>::map(F&& f) & {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-auto expected<T,E>::map(F&& f) const & {
+expected<std::decay_t<std::invoke_result_t<F,T>>, E>
+expected<T,E>::map(F&& f) const & {
+
     using result_t = impl::expected_mapped_type_t<T,E,F>;
     using value_type = typename result_t::value_type;
 
@@ -1952,7 +1964,9 @@ auto expected<T,E>::map(F&& f) const & {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-auto expected<T,E>::map(F&& f) && {
+expected<std::decay_t<std::invoke_result_t<F,T>>, E>
+expected<T,E>::map(F&& f) && {
+
     using result_t = impl::expected_mapped_type_t<T,E,F>;
     using value_type = typename result_t::value_type;
 
@@ -1972,7 +1986,9 @@ auto expected<T,E>::map(F&& f) && {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-auto expected<T,E>::map(F&& f) const && {
+expected<std::decay_t<std::invoke_result_t<F,T>>, E>
+expected<T,E>::map(F&& f) const && {
+
     using result_t = impl::expected_mapped_type_t<T,E,F>;
     using value_type = typename result_t::value_type;
 
@@ -1992,7 +2008,9 @@ auto expected<T,E>::map(F&& f) const && {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-auto expected<T,E>::map_error(F&& f) & {
+expected<T, std::decay_t<std::invoke_result_t<F,E>>>
+expected<T,E>::map_error(F&& f) & {
+
     using result_t = impl::expected_mapped_error_type_t<T,E,F>;
 
     return bool(*this) ?
@@ -2003,7 +2021,9 @@ auto expected<T,E>::map_error(F&& f) & {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-auto expected<T,E>::map_error(F&& f) const & {
+expected<T, std::decay_t<std::invoke_result_t<F,E>>>
+expected<T,E>::map_error(F&& f) const & {
+
     using result_t = impl::expected_mapped_error_type_t<T,E,F>;
 
     return bool(*this) ?
@@ -2014,7 +2034,9 @@ auto expected<T,E>::map_error(F&& f) const & {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-auto expected<T,E>::map_error(F&& f) && {
+expected<T, std::decay_t<std::invoke_result_t<F,E>>>
+expected<T,E>::map_error(F&& f) && {
+
     using result_t = impl::expected_mapped_error_type_t<T,E,F>;
 
     return bool(*this) ?
@@ -2025,7 +2047,9 @@ auto expected<T,E>::map_error(F&& f) && {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-auto expected<T,E>::map_error(F&& f) const && {
+expected<T, std::decay_t<std::invoke_result_t<F,E>>>
+expected<T,E>::map_error(F&& f) const && {
+
     using result_t = impl::expected_mapped_error_type_t<T,E,F>;
 
     return bool(*this) ?
@@ -2147,22 +2171,30 @@ class expected<void, E> : public impl::expected_interface_base<void,E> {
 
         #ifdef VIEN_EXPECTED_EXTENDED
         template <typename F>
-        auto map(F&&) &;
+        expected<std::decay_t<std::invoke_result_t<F>>, E>
+            map(F&&) &;
         template <typename F>
-        auto map(F&&) const &;
+        expected<std::decay_t<std::invoke_result_t<F>>, E>
+            map(F&&) const &;
         template <typename F>
-        auto map(F&&) &&;
+        expected<std::decay_t<std::invoke_result_t<F>>, E>
+            map(F&&) &&;
         template <typename F>
-        auto map(F&&) const &&;
+        expected<std::decay_t<std::invoke_result_t<F>>, E>
+            map(F&&) const &&;
 
         template <typename F>
-        auto map_error(F&&) &;
+        expected<void, std::decay_t<std::invoke_result_t<F,E>>>
+            map_error(F&&) &;
         template <typename F>
-        auto map_error(F&&) const &;
+        expected<void, std::decay_t<std::invoke_result_t<F,E>>>
+            map_error(F&&) const &;
         template <typename F>
-        auto map_error(F&&) &&;
+        expected<void, std::decay_t<std::invoke_result_t<F,E>>>
+            map_error(F&&) &&;
         template <typename F>
-        auto map_error(F&&) const &&;
+        expected<void, std::decay_t<std::invoke_result_t<F,E>>>
+            map_error(F&&) const &&;
         #endif
 };
 
@@ -2275,7 +2307,9 @@ constexpr bool operator!=(expected<void, E1> const& x, expected<void, E2> const&
 template <typename E>
 template <typename F>
 [[nodiscard]]
-auto expected<void,E>::map(F&& f) & {
+expected<std::decay_t<std::invoke_result_t<F>>, E>
+expected<void,E>::map(F&& f) & {
+
     using result_t = impl::expected_mapped_type_t<void,E,F>;
     using value_type = typename result_t::value_type;
 
@@ -2295,7 +2329,9 @@ auto expected<void,E>::map(F&& f) & {
 template <typename E>
 template <typename F>
 [[nodiscard]]
-auto expected<void,E>::map(F&& f) const & {
+expected<std::decay_t<std::invoke_result_t<F>>, E>
+expected<void,E>::map(F&& f) const & {
+
     using result_t = impl::expected_mapped_type_t<void,E,F>;
     using value_type = typename result_t::value_type;
 
@@ -2315,7 +2351,9 @@ auto expected<void,E>::map(F&& f) const & {
 template <typename E>
 template <typename F>
 [[nodiscard]]
-auto expected<void,E>::map(F&& f) && {
+expected<std::decay_t<std::invoke_result_t<F>>, E>
+expected<void,E>::map(F&& f) && {
+
     using result_t = impl::expected_mapped_type_t<void,E,F>;
     using value_type = typename result_t::value_type;
 
@@ -2335,7 +2373,9 @@ auto expected<void,E>::map(F&& f) && {
 template <typename E>
 template <typename F>
 [[nodiscard]]
-auto expected<void,E>::map(F&& f) const && {
+expected<std::decay_t<std::invoke_result_t<F>>, E>
+expected<void,E>::map(F&& f) const && {
+
     using result_t = impl::expected_mapped_type_t<void,E,F>;
     using value_type = typename result_t::value_type;
 
@@ -2355,7 +2395,9 @@ auto expected<void,E>::map(F&& f) const && {
 template <typename E>
 template <typename F>
 [[nodiscard]]
-auto expected<void, E>::map_error(F&& f) & {
+expected<void, std::decay_t<std::invoke_result_t<F,E>>>
+expected<void, E>::map_error(F&& f) & {
+
     using result_t = impl::expected_mapped_error_type_t<void,E,F>;
 
     return bool(*this) ?
@@ -2366,7 +2408,9 @@ auto expected<void, E>::map_error(F&& f) & {
 template <typename E>
 template <typename F>
 [[nodiscard]]
-auto expected<void, E>::map_error(F&& f) const & {
+expected<void, std::decay_t<std::invoke_result_t<F,E>>>
+expected<void, E>::map_error(F&& f) const & {
+
     using result_t = impl::expected_mapped_error_type_t<void,E,F>;
 
     return bool(*this) ?
@@ -2377,7 +2421,9 @@ auto expected<void, E>::map_error(F&& f) const & {
 template <typename E>
 template <typename F>
 [[nodiscard]]
-auto expected<void, E>::map_error(F&& f) && {
+expected<void, std::decay_t<std::invoke_result_t<F,E>>>
+expected<void, E>::map_error(F&& f) && {
+
     using result_t = impl::expected_mapped_error_type_t<void,E,F>;
 
     return bool(*this) ?
@@ -2388,7 +2434,9 @@ auto expected<void, E>::map_error(F&& f) && {
 template <typename E>
 template <typename F>
 [[nodiscard]]
-auto expected<void, E>::map_error(F&& f) const && {
+expected<void, std::decay_t<std::invoke_result_t<F,E>>>
+expected<void, E>::map_error(F&& f) const && {
+
     using result_t = impl::expected_mapped_error_type_t<void,E,F>;
 
     return bool(*this) ?
