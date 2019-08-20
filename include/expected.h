@@ -257,6 +257,10 @@ class bad_expected_access : public bad_expected_access<void> {
 #include <type_traits>
 #include <utility>
 
+#ifdef VIEN_EXPECTED_EXTENDED
+#include <functional>
+#endif
+
 namespace vien {
 using in_place_t = std::in_place_t;
 
@@ -518,22 +522,21 @@ struct type_is {
 
 template <typename T, typename E, typename F>
 struct expected_mapped_type
-    : type_is<expected<std::decay_t<decltype(std::declval<F>()(std::declval<T>()))>, E>>
+    : type_is<expected<std::decay_t<std::invoke_result_t<F, T>>, E>>
 { };
 
 template <typename E, typename F>
 struct expected_mapped_type<void, E, F>
-    : type_is<expected<std::decay_t<decltype(std::declval<F>()())>, E>>
-{ };
+    : type_is<expected<std::decay_t<std::invoke_result_t<F>>, E>> { };
 
 template <typename T, typename E, typename F>
 using expected_mapped_type_t = typename expected_mapped_type<T,E,F>::type;
 
 template <typename T, typename E, typename F>
 struct expected_mapped_error_type
-    : type_is<expected<T, std::decay_t<decltype(std::declval<F>()(std::declval<E>()))>>>
+    : type_is<expected<T, std::decay_t<std::invoke_result_t<F,E>>>>
 {
-    static_assert(!std::is_void_v<decltype(std::declval<F>()(std::declval<E>()))>,
+    static_assert(!std::is_void_v<std::invoke_result_t<F,E>>,
                   "Cannot map error to void");
 };
 
@@ -1914,13 +1917,14 @@ auto expected<T,E>::map(F&& f) & {
     using value_type = typename result_t::value_type;
 
     if constexpr(std::is_void_v<value_type>) {
+        std::invoke(std::forward<F>(f), **this);
         return bool(*this) ?
             result_t{} :
             result_t(unexpect, this->error());
     }
     else {
         return bool(*this) ?
-                result_t(f(**this)) :
+                result_t(std::invoke(std::forward<F>(f), **this)) :
                 result_t(unexpect, this->error());
     }
 }
@@ -1933,13 +1937,14 @@ auto expected<T,E>::map(F&& f) const & {
     using value_type = typename result_t::value_type;
 
     if constexpr(std::is_void_v<value_type>) {
+        std::invoke(std::forward<F>(f), **this);
         return bool(*this) ?
             result_t{} :
             result_t(unexpect, this->error());
     }
     else {
         return bool(*this) ?
-                result_t(f(**this)) :
+                result_t(std::invoke(std::forward<F>(f), **this)) :
                 result_t(unexpect, this->error());
     }
 }
@@ -1952,13 +1957,14 @@ auto expected<T,E>::map(F&& f) && {
     using value_type = typename result_t::value_type;
 
     if constexpr(std::is_void_v<value_type>) {
+        std::invoke(std::forward<F>(f), std::move(**this));
         return bool(*this) ?
             result_t{} :
             result_t(unexpect, std::move(this->error()));
     }
     else {
         return bool(*this) ?
-                result_t(f(std::move(**this))) :
+                result_t(std::invoke(std::forward<F>(f), std::move(**this))) :
                 result_t(unexpect, std::move(this->error()));
     }
 }
@@ -1971,13 +1977,14 @@ auto expected<T,E>::map(F&& f) const && {
     using value_type = typename result_t::value_type;
 
     if constexpr(std::is_void_v<value_type>) {
+        std::invoke(std::forward<F>(f), std::move(**this));
         return bool(*this) ?
             result_t{} :
             result_t(unexpect, std::move(this->error()));
     }
     else {
         return bool(*this) ?
-                result_t(f(std::move(**this))) :
+                result_t(std::invoke(std::forward<F>(f), std::move(**this))) :
                 result_t(unexpect, std::move(this->error()));
     }
 }
@@ -1990,7 +1997,7 @@ auto expected<T,E>::map_error(F&& f) & {
 
     return bool(*this) ?
             result_t(**this) :
-            result_t(unexpect, f(this->error()));
+            result_t(unexpect, std::invoke(std::forward<F>(f), this->error()));
 }
 
 template <typename T, typename E>
@@ -2001,7 +2008,7 @@ auto expected<T,E>::map_error(F&& f) const & {
 
     return bool(*this) ?
             result_t(**this) :
-            result_t(unexpect, f(this->error()));
+            result_t(unexpect, std::invoke(std::forward<F>(f), this->error()));
 }
 
 template <typename T, typename E>
@@ -2012,7 +2019,7 @@ auto expected<T,E>::map_error(F&& f) && {
 
     return bool(*this) ?
             result_t(std::move(**this)) :
-            result_t(unexpect, f(std::move(this->error())));
+            result_t(unexpect, std::invoke(std::forward<F>(f), std::move(this->error())));
 }
 
 template <typename T, typename E>
@@ -2023,7 +2030,7 @@ auto expected<T,E>::map_error(F&& f) const && {
 
     return bool(*this) ?
             result_t(std::move(**this)) :
-            result_t(unexpect, f(std::move(this->error())));
+            result_t(unexpect, std::invoke(std::forward<F>(f), std::move(this->error())));
 }
 
 template <typename T, typename E>
@@ -2031,7 +2038,7 @@ template <typename F>
 [[nodiscard]]
 expected<T,E> expected<T,E>::and_then(F&& f) & {
     return bool(*this) ?
-            expected(f(**this)) :
+            expected(std::invoke(std::forward<F>(f), **this)) :
             expected(unexpect, this->error());
 }
 
@@ -2040,7 +2047,7 @@ template <typename F>
 [[nodiscard]]
 expected<T,E> expected<T,E>::and_then(F&& f) const & {
     return bool(*this) ?
-            expected(f(**this)) :
+            expected(std::invoke(std::forward<F>(f), **this)) :
             expected(unexpect, this->error());
 }
 
@@ -2049,7 +2056,7 @@ template <typename F>
 [[nodiscard]]
 expected<T,E> expected<T,E>::and_then(F&& f) && {
     return bool(*this) ?
-            expected(f(std::move(**this))) :
+            expected(std::invoke(std::forward<F>(f), std::move(**this))) :
             expected(unexpect, std::move(this->error()));
 }
 
@@ -2058,7 +2065,7 @@ template <typename F>
 [[nodiscard]]
 expected<T,E> expected<T,E>::and_then(F&& f) const && {
     return bool(*this) ?
-            expected(f(std::move(**this))) :
+            expected(std::invoke(std::forward<F>(f), std::move(**this))) :
             expected(unexpect, std::move(this->error()));
 }
 
@@ -2273,13 +2280,14 @@ auto expected<void,E>::map(F&& f) & {
     using value_type = typename result_t::value_type;
 
     if constexpr(std::is_void_v<value_type>) {
+        std::invoke(std::forward<F>(f));
         return bool(*this) ?
             result_t{} :
             result_t(unexpect, this->error());
     }
     else {
         return bool(*this) ?
-                result_t(f()) :
+                result_t(std::invoke(std::forward<F>(f))) :
                 result_t(unexpect, this->error());
     }
 }
@@ -2292,13 +2300,14 @@ auto expected<void,E>::map(F&& f) const & {
     using value_type = typename result_t::value_type;
 
     if constexpr(std::is_void_v<value_type>) {
+        std::invoke(std::forward<F>(f));
         return bool(*this) ?
             result_t{} :
             result_t(unexpect, this->error());
     }
     else {
         return bool(*this) ?
-                result_t(f()) :
+                result_t(std::invoke(std::forward<F>(f))) :
                 result_t(unexpect, this->error());
     }
 }
@@ -2311,13 +2320,14 @@ auto expected<void,E>::map(F&& f) && {
     using value_type = typename result_t::value_type;
 
     if constexpr(std::is_void_v<value_type>) {
+        std::invoke(std::forward<F>(f));
         return bool(*this) ?
             result_t{} :
             result_t(unexpect, std::move(this->error()));
     }
     else {
         return bool(*this) ?
-                result_t(f()) :
+                result_t(std::invoke(std::forward<F>(f))) :
                 result_t(unexpect, std::move(this->error()));
     }
 }
@@ -2330,13 +2340,14 @@ auto expected<void,E>::map(F&& f) const && {
     using value_type = typename result_t::value_type;
 
     if constexpr(std::is_void_v<value_type>) {
+        std::invoke(std::forward<F>(f));
         return bool(*this) ?
             result_t{} :
             result_t(unexpect, std::move(this->error()));
     }
     else {
         return bool(*this) ?
-                result_t(f()) :
+                result_t(std::invoke(std::forward<F>(f))) :
                 result_t(unexpect, std::move(this->error()));
     }
 }
@@ -2349,7 +2360,7 @@ auto expected<void, E>::map_error(F&& f) & {
 
     return bool(*this) ?
             result_t{} :
-            result_t(unexpect, f(this->error()));
+            result_t(unexpect, std::invoke(std::forward<F>(f), this->error()));
 }
 
 template <typename E>
@@ -2360,7 +2371,7 @@ auto expected<void, E>::map_error(F&& f) const & {
 
     return bool(*this) ?
             result_t{} :
-            result_t(unexpect, f(this->error()));
+            result_t(unexpect, std::invoke(std::forward<F>(f), this->error()));
 }
 
 template <typename E>
@@ -2371,7 +2382,7 @@ auto expected<void, E>::map_error(F&& f) && {
 
     return bool(*this) ?
             result_t{} :
-            result_t(unexpect, f(std::move(this->error())));
+            result_t(unexpect, std::invoke(std::forward<F>(f), std::move(this->error())));
 }
 
 template <typename E>
@@ -2382,7 +2393,7 @@ auto expected<void, E>::map_error(F&& f) const && {
 
     return bool(*this) ?
             result_t{} :
-            result_t(unexpect, f(std::move(this->error())));
+            result_t(unexpect, std::invoke(std::forward<F>(f), std::move(this->error())));
 }
 
 #endif
