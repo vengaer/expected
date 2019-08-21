@@ -132,7 +132,7 @@ TEST_CASE("and_then yields correct values", "[expected][extended][and_then]") {
     REQUIRE(e4 == unexpected("string"));
 }
 
-TEST_CASE("and_then creates no unnecessary", "[expected][extended][and_then]") {
+TEST_CASE("and_then creates no unnecessary copies", "[expected][extended][and_then]") {
     static int copies = 0;
     static int moves = 0;
     struct count_ops_t {
