@@ -2101,6 +2101,15 @@ class expected : public impl::expected_interface_base<T,E> {
         expected<T, std::decay_t<std::invoke_result_t<F,E>>>
             map_error(F&&) const &&;
 
+        template <typename M, typename F>
+        T map_or_else(M&&, F&&) &;
+        template <typename M, typename F>
+        T map_or_else(M&&, F&&) const &;
+        template <typename M, typename F>
+        T map_or_else(M&&, F&&) &&;
+        template <typename M, typename F>
+        T map_or_else(M&&, F&&) const &&;
+
         template <typename F>
         expected and_then(F&&) &;
         template <typename F>
@@ -2683,6 +2692,42 @@ expected<T,E>::map_error(F&& f) const && {
     return bool(*this) ?
             result_t(std::move(**this)) :
             result_t(unexpect, std::invoke(std::forward<F>(f), std::move(this->error())));
+}
+
+template <typename T, typename E>
+template <typename M, typename F>
+[[nodiscard]]
+T expected<T,E>::map_or_else(M&& map, F&& fallback) & {
+    return bool(*this) ?
+        std::invoke(std::forward<M>(map), **this) :
+        std::invoke(std::forward<F>(fallback), this->error());
+}
+
+template <typename T, typename E>
+template <typename M, typename F>
+[[nodiscard]]
+T expected<T,E>::map_or_else(M&& map, F&& fallback) const & {
+    return bool(*this) ?
+        std::invoke(std::forward<M>(map), **this) :
+        std::invoke(std::forward<F>(fallback), this->error());
+}
+
+template <typename T, typename E>
+template <typename M, typename F>
+[[nodiscard]]
+T expected<T,E>::map_or_else(M&& map, F&& fallback) && {
+    return bool(*this) ?
+        std::invoke(std::forward<M>(map), std::move(**this)) :
+        std::invoke(std::forward<F>(fallback), std::move(this->error()));
+}
+
+template <typename T, typename E>
+template <typename M, typename F>
+[[nodiscard]]
+T expected<T,E>::map_or_else(M&& map, F&& fallback) const && {
+    return bool(*this) ?
+        std::invoke(std::forward<M>(map), std::move(**this)) :
+        std::invoke(std::forward<F>(fallback), std::move(this->error()));
 }
 
 template <typename T, typename E>
