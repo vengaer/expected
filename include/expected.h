@@ -2127,6 +2127,15 @@ class expected : public impl::expected_interface_base<T,E> {
         expected and_then(F&&) &&;
         template <typename F>
         expected and_then(F&&) const &&;
+
+        template <typename F>
+        expected or_else(F&&) &;
+        template <typename F>
+        expected or_else(F&&) const &;
+        template <typename F>
+        expected or_else(F&&) &&;
+        template <typename F>
+        expected or_else(F&&) const &&;
         #endif
 };
 
@@ -2775,6 +2784,60 @@ expected<T,E> expected<T,E>::and_then(F&& f) const && {
             expected(unexpect, std::move(this->error()));
 }
 
+template <typename T, typename E>
+template <typename F>
+[[nodiscard]]
+expected<T,E> expected<T,E>::or_else(F&& f) & {
+    static_assert(std::is_same_v<E, std::invoke_result_t<F,E&>>,
+                  "Callable F must return an instance of type E");
+
+    if(bool(*this))
+        return *this;
+
+    return expected(unexpect, std::invoke(std::forward<F>(f), this->error()));
+}
+
+template <typename T, typename E>
+template <typename F>
+[[nodiscard]]
+expected<T,E> expected<T,E>::or_else(F&& f) const & {
+    static_assert(std::is_same_v<E, std::invoke_result_t<F,E const&>>,
+                  "Callable F must return an instance of type E");
+
+    if(bool(*this))
+        return *this;
+
+    return expected(unexpect, std::invoke(std::forward<F>(f), this->error()));
+}
+
+template <typename T, typename E>
+template <typename F>
+[[nodiscard]]
+expected<T,E> expected<T,E>::or_else(F&& f) && {
+    static_assert(std::is_same_v<E, std::invoke_result_t<F,E&&>>,
+                  "Callable F must return an instance of type E");
+
+    if(bool(*this))
+        return std::move(*this);
+
+    return expected(unexpect, std::invoke(std::forward<F>(f),
+                                                         std::move(this->error())));
+}
+
+template <typename T, typename E>
+template <typename F>
+[[nodiscard]]
+expected<T,E> expected<T,E>::or_else(F&& f) const && {
+    static_assert(std::is_same_v<E, std::invoke_result_t<F,E const&&>>,
+                  "Callable F must return an instance of type E");
+
+    if(bool(*this))
+        return std::move(*this);
+
+    return expected(unexpect, std::invoke(std::forward<F>(f),
+                                                         std::move(this->error())));
+}
+
 #endif
 
 template <typename E>
@@ -2877,6 +2940,15 @@ class expected<void, E> : public impl::expected_interface_base<void,E> {
         template <typename F>
         expected<void, std::decay_t<std::invoke_result_t<F,E>>>
             map_error(F&&) const &&;
+
+        template <typename F>
+        expected or_else(F&&) &;
+        template <typename F>
+        expected or_else(F&&) const &;
+        template <typename F>
+        expected or_else(F&&) &&;
+        template <typename F>
+        expected or_else(F&&) const &&;
         #endif
 };
 
@@ -3124,6 +3196,60 @@ expected<void, E>::map_error(F&& f) const && {
     return bool(*this) ?
             result_t{} :
             result_t(unexpect, std::invoke(std::forward<F>(f), std::move(this->error())));
+}
+
+template <typename E>
+template <typename F>
+[[nodiscard]]
+expected<void,E> expected<void,E>::or_else(F&& f) & {
+    static_assert(std::is_same_v<E, std::invoke_result_t<F,E&>>,
+                  "Callable F must return an instance of type E");
+
+    if(bool(*this))
+        return *this;
+
+    return expected(unexpect, std::invoke(std::forward<F>(f), this->error()));
+}
+
+template <typename E>
+template <typename F>
+[[nodiscard]]
+expected<void,E> expected<void,E>::or_else(F&& f) const & {
+    static_assert(std::is_same_v<E, std::invoke_result_t<F,E const&>>,
+                  "Callable F must return an instance of type E");
+
+    if(bool(*this))
+        return *this;
+
+    return expected(unexpect, std::invoke(std::forward<F>(f), this->error()));
+}
+
+template <typename E>
+template <typename F>
+[[nodiscard]]
+expected<void,E> expected<void,E>::or_else(F&& f) && {
+    static_assert(std::is_same_v<E, std::invoke_result_t<F,E&&>>,
+                  "Callable F must return an instance of type E");
+
+    if(bool(*this))
+        return std::move(*this);
+
+    return expected(unexpect, std::invoke(std::forward<F>(f),
+                                                         std::move(this->error())));
+}
+
+template <typename E>
+template <typename F>
+[[nodiscard]]
+expected<void,E> expected<void,E>::or_else(F&& f) const && {
+    static_assert(std::is_same_v<E, std::invoke_result_t<F,E const&&>>,
+                  "Callable F must return an instance of type E");
+
+    if(bool(*this))
+        return std::move(*this);
+
+    return expected(unexpect, std::invoke(std::forward<F>(f),
+                                                         std::move(this->error())));
 }
 
 #endif
