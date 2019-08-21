@@ -162,8 +162,6 @@ TEST_CASE("map_range available iff T is container", "[expected][map_range]") {
 TEST_CASE("rebind_unary_template meta function", "[impl][rebind_unary_template]") {
     REQUIRE(std::is_same_v<impl::rebind_unary_template_t<std::less<int>, std::string>,
                            std::less<std::string>>);
-    REQUIRE(std::is_same_v<impl::rebind_if_comparator_t<std::less<int>, std::string>,
-                           std::less<std::string>>);
     REQUIRE(std::is_same_v<impl::rebind_if_hash_t<std::hash<int>, std::string>,
                            std::hash<std::string>>);
 }
