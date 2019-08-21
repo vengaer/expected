@@ -869,15 +869,11 @@ class array_insert_iterator<std::array<T, N>> {
             : ctr_{std::addressof(c)} { }
 
         constexpr array_insert_iterator& operator=(T const& v) {
-            if(idx_ >= N)
-                throw std::out_of_range("Array insertion out of bounds");
             (*ctr_)[idx_++] = v;
             return *this;
         }
 
         constexpr array_insert_iterator& operator=(T&& v) {
-            if(idx_ >= N)
-                throw std::out_of_range("Array insertion out of bounds");
             (*ctr_)[idx_++] = std::move(v);
             return *this;
         }
