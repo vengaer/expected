@@ -6,10 +6,12 @@
 #include <array>
 #include <forward_list>
 #include <functional>
+#include <map>
 #include <set>
 #include <string>
 #include <type_traits>
 #include <unordered_set>
+#include <unordered_map>
 #include <vector>
 
 using namespace vien;
@@ -157,7 +159,7 @@ TEST_CASE("map_range available iff T is container", "[expected][map_range]") {
     REQUIRE(!has_map_range_v<expected<int, int>>);
 }
 
-TEST_CASE("rebind_unary_template meta function", "[impl][rebind_comparator]") {
+TEST_CASE("rebind_unary_template meta function", "[impl][rebind_unary_template]") {
     REQUIRE(std::is_same_v<impl::rebind_unary_template_t<std::less<int>, std::string>,
                            std::less<std::string>>);
     REQUIRE(std::is_same_v<impl::rebind_if_comparator_t<std::less<int>, std::string>,
@@ -166,46 +168,26 @@ TEST_CASE("rebind_unary_template meta function", "[impl][rebind_comparator]") {
                            std::hash<std::string>>);
 }
 
-SCENARIO("rebind meta function", "[impl][rebind]") {
-    GIVEN("An instance of type vector<int>") {
-        std::vector<int> v;
+TEST_CASE("rebind associative container", "[impl][rebind]") {
+    /* std::map<int, std::string> -> std::map<std::string, int> */
+    REQUIRE(std::is_same_v<impl::rebind_t<std::map<int, std::string>,
+                                          std::pair<std::string, int>>,
+                            std::map<std::string, int>>);
 
-        WHEN("Rebinding the value type to std::string") {
-            using result_t = impl::rebind_t<decltype(v), std::string>;
+    /* std::map<int, std::string> -> std::map<int, int> */
+    REQUIRE(std::is_same_v<impl::rebind_t<std::map<int, std::string>, int>,
+                            std::map<int, int>>);
 
-            THEN("The value and allocator types are rebound correctly") {
-                REQUIRE(std::is_same_v<std::vector<std::string>, result_t>);
-                REQUIRE(std::is_same_v<typename result_t::value_type, std::string>);
-                REQUIRE(std::is_same_v<typename result_t::allocator_type,
-                                       std::allocator<std::string>>);
-            }
-        }
-    }
-    GIVEN("A standard array of type array<int, 4>") {
-        std::array<int, 4> a;
+    /* std::unordered_map<std::string, int> -> std::unordered_map<std::string, std::string> */
+    REQUIRE(std::is_same_v<impl::rebind_t<std::unordered_map<std::string, int>,
+                                        std::pair<std::string, std::string>>,
+                            std::unordered_map<std::string, std::string>>);
 
-        WHEN("Rebinding the value type to std::string") {
-            using result_t = impl::rebind_t<decltype(a), std::string>;
-
-            THEN("The value type is rebound correcty") {
-                REQUIRE(std::is_same_v<result_t, std::array<std::string, 4>>);
-            }
-        }
-    }
-    GIVEN("A standard set of type std::set<int>") {
-        std::set<int> s;
-
-        WHEN("Rebinding the value type to std::string") {
-            using result_t = impl::rebind_t<decltype(s), std::string>;
-            THEN("The value type and allocator is rebound correctly") {
-                REQUIRE(std::is_same_v<typename result_t::value_type,
-                                       std::string>);
-                REQUIRE(std::is_same_v<typename result_t::allocator_type,
-                                       std::allocator<std::string>>);
-
-            }
-        }
-    }
+    /* std::unordered_mulimap<std::string, int> ->
+     *      std::unordered_multimap<std::vector<int>, std::string */
+    REQUIRE(std::is_same_v<std::unordered_multimap<std::vector<int>, std::string>,
+                           impl::rebind_t<std::unordered_multimap<std::string, int>,
+                                          std::pair<std::vector<int>, std::string>>>);
 }
 
 TEST_CASE("map_range converts correctly when bool(*this)", "[expected][extended][map_range]") {
@@ -294,6 +276,128 @@ TEST_CASE("map_range works for hashing container", "[expected][extended][map_ran
     REQUIRE(std::is_same_v<decltype(e2), expected<std::unordered_set<std::string>, int>>);
     REQUIRE(bool(e2));
     REQUIRE(e2 == u2);
+}
+
+TEST_CASE("map_range works for associative container with pair type", "[expected][extended][map_range]") {
+    std::map<std::string, int> m1;
+    m1.insert({"1", 1});
+    m1.insert({"2", 2});
+    m1.insert({"3", 3});
+
+    std::map<int, std::string> m2;
+    m2.insert({1, "1"});
+    m2.insert({2, "2"});
+    m2.insert({3, "3"});
+
+    expected<std::map<std::string, int>, double> e1(std::move(m1));
+
+    auto e2 = e1.map_range([](auto&& pair) {
+        return std::make_pair(std::forward<decltype(pair.second)>(pair.second),
+                              std::forward<decltype(pair.first)>(pair.first));
+    });
+
+    REQUIRE(std::is_same_v<decltype(e2), expected<std::map<int, std::string>, double>>);
+    REQUIRE(bool(e2));
+    REQUIRE(e2 == m2);
+}
+
+TEST_CASE("map_range works for associative container with non-pair type", "[expected][extended][map_range]") {
+    std::unordered_multimap<std::string, int> m1;
+    m1.insert({"1", 1});
+    m1.insert({"1", 2});
+    m1.insert({"2", 1});
+    m1.insert({"2", 2});
+
+    std::unordered_multimap<std::string, std::string> m2;
+    m2.insert({"1", "1"});
+    m2.insert({"1", "2"});
+    m2.insert({"2", "1"});
+    m2.insert({"2", "2"});
+
+    expected<std::unordered_multimap<std::string, int>, int> e1(std::move(m1));
+
+    auto e2 = e1.map_range([](auto&& pair) {
+        return std::to_string(std::forward<decltype(pair.second)>(pair.second));
+    });
+
+    REQUIRE(std::is_same_v<expected<std::unordered_multimap<std::string, std::string>,
+                                    int>,
+                           decltype(e2)>);
+    REQUIRE(bool(e2));
+    REQUIRE(e2 == m2);
+}
+
+SCENARIO("rebind meta function", "[impl][rebind]") {
+    GIVEN("An instance of type vector<int>") {
+        std::vector<int> v;
+
+        WHEN("Rebinding the value type to std::string") {
+            using result_t = impl::rebind_t<decltype(v), std::string>;
+
+            THEN("The value and allocator types are rebound correctly") {
+                REQUIRE(std::is_same_v<std::vector<std::string>, result_t>);
+                REQUIRE(std::is_same_v<typename result_t::value_type, std::string>);
+                REQUIRE(std::is_same_v<typename result_t::allocator_type,
+                                       std::allocator<std::string>>);
+            }
+        }
+    }
+    GIVEN("A standard array of type array<int, 4>") {
+        std::array<int, 4> a;
+
+        WHEN("Rebinding the value type to std::string") {
+            using result_t = impl::rebind_t<decltype(a), std::string>;
+
+            THEN("The value type is rebound correcty") {
+                REQUIRE(std::is_same_v<result_t, std::array<std::string, 4>>);
+            }
+        }
+    }
+    GIVEN("A standard set of type std::set<int>") {
+        std::set<int> s;
+
+        WHEN("Rebinding the value type to std::string") {
+            using result_t = impl::rebind_t<decltype(s), std::string>;
+            THEN("The value type, allocator and comparator are rebound correctly") {
+                REQUIRE(std::is_same_v<typename result_t::value_type,
+                                       std::string>);
+                REQUIRE(std::is_same_v<typename result_t::allocator_type,
+                                       std::allocator<std::string>>);
+
+            }
+        }
+    }
+    GIVEN("A hashed container of type std::unordered_set<int>") {
+        std::unordered_set<int> s;
+
+        WHEN("Rebinding the value type to std::string") {
+            using result_t = impl::rebind_t<decltype(s), std::string>;
+            THEN("The value type, allocator and hash type are rebound correctly") {
+                REQUIRE(std::is_same_v<typename result_t::value_type,
+                                       std::string>);
+                REQUIRE(std::is_same_v<typename result_t::allocator_type,
+                                       std::allocator<std::string>>);
+                REQUIRE(std::is_same_v<typename result_t::hasher,
+                                       std::hash<std::string>>);
+            }
+        }
+    }
+    GIVEN("A hashed, associative container of type std::unordered_multimap<std::string, int>") {
+        std::unordered_multimap<std::string, int> umm;
+
+        WHEN("Rebinding the mapped type to double via non-pair") {
+            using result_t = impl::rebind_t<decltype(umm), double>;
+            THEN("The mapped type, allocator, hasher and comparator are rebound correctly") {
+                REQUIRE(std::is_same_v<typename result_t::mapped_type, double>);
+                REQUIRE(std::is_same_v<typename result_t::hasher,
+                                       std::hash<std::string>>);
+                REQUIRE(std::is_same_v<typename result_t::allocator_type,
+                                       std::allocator<std::pair<std::string const, double>>>);
+                REQUIRE(std::is_same_v<typename result_t::key_equal,
+                                       std::equal_to<std::string>>);
+            }
+        }
+    }
 }
 
 #endif
