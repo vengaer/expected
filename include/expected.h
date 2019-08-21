@@ -12,7 +12,7 @@
 /*
     --expected synopsis--
 
-*** using syntax similar to conditionally noexcept for conditionally explicit
+*** using the not yet available explicit(condition) syntax
 
 namespace vien {
 inline namespace v1 {
