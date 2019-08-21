@@ -165,6 +165,15 @@ class expected {
         template <typename F>
         expected<T, std::decay_t<std::invoke_result_t<F,E>>> map_error(F&&) const &&;
 
+        template <typename M, typename F>
+        T map_or_else(M&&, T&&) &;
+        template <typename M, typename F>
+        T map_or_else(M&&, T&&) const &;
+        template <typename M, typename F>
+        T map_or_else(M&&, T&&) &&;
+        template <typename M, typename F>
+        T map_or_else(M&&, T&&) const &&;
+
         template <typename F>
         expected and_then(F&&) &;
         template <typename F>
