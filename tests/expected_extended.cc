@@ -337,6 +337,25 @@ TEST_CASE("map_or_else invokes callables correctly", "[expected][extended][map_o
                                  [](auto const& str) { return std::atoi(str.data()); }));
 }
 
+TEMPLATE_TEST_CASE("or_else invokes returns correct value", "[expected][extended][or_else]", void, std::string) {
+    
+    expected<TestType, int> e1(unexpect, 10);
+    expected<TestType, int> e2{};
+    if constexpr(std::is_same_v<std::string, TestType>)
+        e2 = "str";
+
+    auto e3 = e1.or_else([](int i) { return 2 * i; });
+
+    REQUIRE(!bool(e3));
+    REQUIRE(e3.error() == 20);
+
+    auto e4 = e2.or_else([](int i) { return 2 * i; });
+    REQUIRE(bool(e4));
+
+    if constexpr(std::is_same_v<std::string, TestType>)
+        REQUIRE(e4 == "str");
+}
+
 SCENARIO("rebind meta function", "[impl][rebind]") {
     GIVEN("An instance of type vector<int>") {
         std::vector<int> v;
