@@ -327,6 +327,16 @@ TEST_CASE("map_range works for associative container with non-pair type", "[expe
     REQUIRE(e2 == m2);
 }
 
+TEST_CASE("map_or_else invokes callables correctly", "[expected][extended][map_or_else]") {
+    expected<int, std::string> e1(unexpect, "12");
+    expected<int, std::string> e2(10);
+
+    REQUIRE(12 == e1.map_or_else([](int i) { return 2 * i; },
+                                 [](auto const& str) { return std::atoi(str.data()); }));
+    REQUIRE(20 == e2.map_or_else([](int i) { return 2 * i; },
+                                 [](auto const& str) { return std::atoi(str.data()); }));
+}
+
 SCENARIO("rebind meta function", "[impl][rebind]") {
     GIVEN("An instance of type vector<int>") {
         std::vector<int> v;
