@@ -139,58 +139,66 @@ class expected {
 
         #ifdef VIEN_EXPECTED_EXTENDED
         template <typename F>
-        expected<std::decay_t<std::invoke_result_t<F,T>>, E> map(F&&) &;
+        constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
+            map(F&&) &;
         template <typename F>
-        expected<std::decay_t<std::invoke_result_t<F,T>>, E> map(F&&) const &;
+        constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
+            map(F&&) const &;
         template <typename F>
-        expected<std::decay_t<std::invoke_result_t<F,T>>, E> map(F&&) &&;
+        constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
+            map(F&&) &&;
         template <typename F>
-        expected<std::decay_t<std::invoke_result_t<F,T>>, E> map(F&&) const &&;
+        constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
+            map(F&&) const &&;
 
         template <typename F>
-        auto map_range(F&&) &;
+        constexpr auto map_range(F&&) &;
         template <typename F>
-        auto map_range(F&&) const &;
+        constexpr auto map_range(F&&) const &;
         template <typename F>
-        auto map_range(F&&) &&;
+        constexpr auto map_range(F&&) &&;
         template <typename F>
-        auto map_range(F&&) const &&;
+        constexpr auto map_range(F&&) const &&;
 
         template <typename F>
-        expected<T, std::decay_t<std::invoke_result_t<F,E>>> map_error(F&&) &;
+        constexpr expected<T, std::decay_t<std::invoke_result_t<F,E>>>
+            map_error(F&&) &;
         template <typename F>
-        expected<T, std::decay_t<std::invoke_result_t<F,E>>> map_error(F&&) const &;
+        constexpr expected<T, std::decay_t<std::invoke_result_t<F,E>>>
+            map_error(F&&) const &;
         template <typename F>
-        expected<T, std::decay_t<std::invoke_result_t<F,E>>> map_error(F&&) &&;
+        constexpr expected<T, std::decay_t<std::invoke_result_t<F,E>>>
+            map_error(F&&) &&;
         template <typename F>
-        expected<T, std::decay_t<std::invoke_result_t<F,E>>> map_error(F&&) const &&;
+        constexpr expected<T, std::decay_t<std::invoke_result_t<F,E>>>
+            map_error(F&&) const &&;
 
         template <typename M, typename F>
-        T map_or_else(M&&, T&&) &;
+        constexpr T map_or_else(M&&, T&&) &;
         template <typename M, typename F>
-        T map_or_else(M&&, T&&) const &;
+        constexpr T map_or_else(M&&, T&&) const &;
         template <typename M, typename F>
-        T map_or_else(M&&, T&&) &&;
+        constexpr T map_or_else(M&&, T&&) &&;
         template <typename M, typename F>
-        T map_or_else(M&&, T&&) const &&;
+        constexpr T map_or_else(M&&, T&&) const &&;
 
         template <typename F>
-        expected and_then(F&&) &;
+        constexpr expected and_then(F&&) &;
         template <typename F>
-        expected and_then(F&&) const &;
+        constexpr expected and_then(F&&) const &;
         template <typename F>
-        expected and_then(F&&) &&;
+        constexpr expected and_then(F&&) &&;
         template <typename F>
-        expected and_then(F&&) const &&;
+        constexpr expected and_then(F&&) const &&;
 
         template <typename F>
-        expected or_else(F&&) &;
+        constexpr expected or_else(F&&) &;
         template <typename F>
-        expected or_else(F&&) const &;
+        constexpr expected or_else(F&&) const &;
         template <typename F>
-        expected or_else(F&&) &&;
+        constexpr expected or_else(F&&) &&;
         template <typename F>
-        expected or_else(F&&) const &&;
+        constexpr expected or_else(F&&) const &&;
         #endif
 
     private:
@@ -2058,23 +2066,23 @@ class expected : public impl::expected_interface_base<T,E> {
 
         #ifdef VIEN_EXPECTED_EXTENDED
         template <typename F>
-        expected<std::decay_t<std::invoke_result_t<F,T>>, E>
+        constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
             map(F&&) &;
         template <typename F>
-        expected<std::decay_t<std::invoke_result_t<F,T>>, E>
+        constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
             map(F&&) const &;
         template <typename F>
-        expected<std::decay_t<std::invoke_result_t<F,T>>, E>
+        constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
             map(F&&) &&;
         template <typename F>
-        expected<std::decay_t<std::invoke_result_t<F,T>>, E>
+        constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
              map(F&&) const &&;
 
         template <typename F, typename TT = T,
                   typename = std::enable_if_t<
                       impl::is_container_v<TT>
                   >>
-        expected<impl::rebind_t<T, std::decay_t<
+        constexpr expected<impl::rebind_t<T, std::decay_t<
                                         std::invoke_result_t<F, impl::value_type_of_t<T>>>>,
                  E>
             map_range(F&&) &;
@@ -2083,7 +2091,7 @@ class expected : public impl::expected_interface_base<T,E> {
                   typename = std::enable_if_t<
                       impl::is_container_v<TT>
                   >>
-        expected<impl::rebind_t<T, std::decay_t<
+        constexpr expected<impl::rebind_t<T, std::decay_t<
                                         std::invoke_result_t<F, impl::value_type_of_t<T>>>>,
                  E>
             map_range(F&&) const &;
@@ -2092,7 +2100,7 @@ class expected : public impl::expected_interface_base<T,E> {
                   typename = std::enable_if_t<
                       impl::is_container_v<TT>
                   >>
-        expected<impl::rebind_t<T, std::decay_t<
+        constexpr expected<impl::rebind_t<T, std::decay_t<
                                         std::invoke_result_t<F, impl::value_type_of_t<T>>>>,
                  E>
             map_range(F&&) &&;
@@ -2101,50 +2109,50 @@ class expected : public impl::expected_interface_base<T,E> {
                   typename = std::enable_if_t<
                       impl::is_container_v<TT>
                   >>
-        expected<impl::rebind_t<T, std::decay_t<
+        constexpr expected<impl::rebind_t<T, std::decay_t<
                                         std::invoke_result_t<F, impl::value_type_of_t<T>>>>,
                  E>
             map_range(F&&) const &&;
 
         template <typename F>
-        expected<T, std::decay_t<std::invoke_result_t<F,E>>>
+        constexpr expected<T, std::decay_t<std::invoke_result_t<F,E>>>
             map_error(F&&) &;
         template <typename F>
-        expected<T, std::decay_t<std::invoke_result_t<F,E>>>
+        constexpr expected<T, std::decay_t<std::invoke_result_t<F,E>>>
             map_error(F&&) const &;
         template <typename F>
-        expected<T, std::decay_t<std::invoke_result_t<F,E>>>
+        constexpr expected<T, std::decay_t<std::invoke_result_t<F,E>>>
             map_error(F&&) &&;
         template <typename F>
-        expected<T, std::decay_t<std::invoke_result_t<F,E>>>
+        constexpr expected<T, std::decay_t<std::invoke_result_t<F,E>>>
             map_error(F&&) const &&;
 
         template <typename M, typename F>
-        T map_or_else(M&&, F&&) &;
+        constexpr T map_or_else(M&&, F&&) &;
         template <typename M, typename F>
-        T map_or_else(M&&, F&&) const &;
+        constexpr T map_or_else(M&&, F&&) const &;
         template <typename M, typename F>
-        T map_or_else(M&&, F&&) &&;
+        constexpr T map_or_else(M&&, F&&) &&;
         template <typename M, typename F>
-        T map_or_else(M&&, F&&) const &&;
+        constexpr T map_or_else(M&&, F&&) const &&;
 
         template <typename F>
-        expected and_then(F&&) &;
+        constexpr expected and_then(F&&) &;
         template <typename F>
-        expected and_then(F&&) const &;
+        constexpr expected and_then(F&&) const &;
         template <typename F>
-        expected and_then(F&&) &&;
+        constexpr expected and_then(F&&) &&;
         template <typename F>
-        expected and_then(F&&) const &&;
+        constexpr expected and_then(F&&) const &&;
 
         template <typename F>
-        expected or_else(F&&) &;
+        constexpr expected or_else(F&&) &;
         template <typename F>
-        expected or_else(F&&) const &;
+        constexpr expected or_else(F&&) const &;
         template <typename F>
-        expected or_else(F&&) &&;
+        constexpr expected or_else(F&&) &&;
         template <typename F>
-        expected or_else(F&&) const &&;
+        constexpr expected or_else(F&&) const &&;
         #endif
 };
 
@@ -2477,7 +2485,7 @@ constexpr bool operator!=(T2 const& v, expected<T1, E1> const& x) {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-expected<std::decay_t<std::invoke_result_t<F,T>>, E>
+constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
 expected<T,E>::map(F&& f) & {
 
     using result_t = impl::expected_mapped_type_t<T,E,F>;
@@ -2499,7 +2507,7 @@ expected<T,E>::map(F&& f) & {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-expected<std::decay_t<std::invoke_result_t<F,T>>, E>
+constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
 expected<T,E>::map(F&& f) const & {
 
     using result_t = impl::expected_mapped_type_t<T,E,F>;
@@ -2521,7 +2529,7 @@ expected<T,E>::map(F&& f) const & {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-expected<std::decay_t<std::invoke_result_t<F,T>>, E>
+constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
 expected<T,E>::map(F&& f) && {
 
     using result_t = impl::expected_mapped_type_t<T,E,F>;
@@ -2543,7 +2551,7 @@ expected<T,E>::map(F&& f) && {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-expected<std::decay_t<std::invoke_result_t<F,T>>, E>
+constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
 expected<T,E>::map(F&& f) const && {
 
     using result_t = impl::expected_mapped_type_t<T,E,F>;
@@ -2565,7 +2573,7 @@ expected<T,E>::map(F&& f) const && {
 template <typename T, typename E>
 template <typename F, typename, typename>
 [[nodiscard]]
-expected<
+constexpr expected<
     impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>, E
 >
 expected<T,E>::map_range(F&& f) & {
@@ -2587,7 +2595,7 @@ expected<T,E>::map_range(F&& f) & {
 template <typename T, typename E>
 template <typename F, typename, typename>
 [[nodiscard]]
-expected<
+constexpr expected<
     impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>, E
 >
 expected<T,E>::map_range(F&& f) const & {
@@ -2609,7 +2617,7 @@ expected<T,E>::map_range(F&& f) const & {
 template <typename T, typename E>
 template <typename F, typename, typename>
 [[nodiscard]]
-expected<
+constexpr expected<
     impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>, E
 >
 expected<T,E>::map_range(F&& f) && {
@@ -2642,7 +2650,7 @@ expected<T,E>::map_range(F&& f) && {
 template <typename T, typename E>
 template <typename F, typename, typename>
 [[nodiscard]]
-expected<
+constexpr expected<
     impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>, E
 >
 expected<T,E>::map_range(F&& f) const && {
@@ -2672,7 +2680,7 @@ expected<T,E>::map_range(F&& f) const && {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-expected<T, std::decay_t<std::invoke_result_t<F,E>>>
+constexpr expected<T, std::decay_t<std::invoke_result_t<F,E>>>
 expected<T,E>::map_error(F&& f) & {
 
     using result_t = impl::expected_mapped_error_type_t<T,E,F>;
@@ -2685,7 +2693,7 @@ expected<T,E>::map_error(F&& f) & {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-expected<T, std::decay_t<std::invoke_result_t<F,E>>>
+constexpr expected<T, std::decay_t<std::invoke_result_t<F,E>>>
 expected<T,E>::map_error(F&& f) const & {
 
     using result_t = impl::expected_mapped_error_type_t<T,E,F>;
@@ -2698,7 +2706,7 @@ expected<T,E>::map_error(F&& f) const & {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-expected<T, std::decay_t<std::invoke_result_t<F,E>>>
+constexpr expected<T, std::decay_t<std::invoke_result_t<F,E>>>
 expected<T,E>::map_error(F&& f) && {
 
     using result_t = impl::expected_mapped_error_type_t<T,E,F>;
@@ -2711,7 +2719,7 @@ expected<T,E>::map_error(F&& f) && {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-expected<T, std::decay_t<std::invoke_result_t<F,E>>>
+constexpr expected<T, std::decay_t<std::invoke_result_t<F,E>>>
 expected<T,E>::map_error(F&& f) const && {
 
     using result_t = impl::expected_mapped_error_type_t<T,E,F>;
@@ -2724,7 +2732,7 @@ expected<T,E>::map_error(F&& f) const && {
 template <typename T, typename E>
 template <typename M, typename F>
 [[nodiscard]]
-T expected<T,E>::map_or_else(M&& map, F&& fallback) & {
+constexpr T expected<T,E>::map_or_else(M&& map, F&& fallback) & {
     return bool(*this) ?
         std::invoke(std::forward<M>(map), **this) :
         std::invoke(std::forward<F>(fallback), this->error());
@@ -2733,7 +2741,7 @@ T expected<T,E>::map_or_else(M&& map, F&& fallback) & {
 template <typename T, typename E>
 template <typename M, typename F>
 [[nodiscard]]
-T expected<T,E>::map_or_else(M&& map, F&& fallback) const & {
+constexpr T expected<T,E>::map_or_else(M&& map, F&& fallback) const & {
     return bool(*this) ?
         std::invoke(std::forward<M>(map), **this) :
         std::invoke(std::forward<F>(fallback), this->error());
@@ -2742,7 +2750,7 @@ T expected<T,E>::map_or_else(M&& map, F&& fallback) const & {
 template <typename T, typename E>
 template <typename M, typename F>
 [[nodiscard]]
-T expected<T,E>::map_or_else(M&& map, F&& fallback) && {
+constexpr T expected<T,E>::map_or_else(M&& map, F&& fallback) && {
     return bool(*this) ?
         std::invoke(std::forward<M>(map), std::move(**this)) :
         std::invoke(std::forward<F>(fallback), std::move(this->error()));
@@ -2751,7 +2759,7 @@ T expected<T,E>::map_or_else(M&& map, F&& fallback) && {
 template <typename T, typename E>
 template <typename M, typename F>
 [[nodiscard]]
-T expected<T,E>::map_or_else(M&& map, F&& fallback) const && {
+constexpr T expected<T,E>::map_or_else(M&& map, F&& fallback) const && {
     return bool(*this) ?
         std::invoke(std::forward<M>(map), std::move(**this)) :
         std::invoke(std::forward<F>(fallback), std::move(this->error()));
@@ -2760,7 +2768,7 @@ T expected<T,E>::map_or_else(M&& map, F&& fallback) const && {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-expected<T,E> expected<T,E>::and_then(F&& f) & {
+constexpr expected<T,E> expected<T,E>::and_then(F&& f) & {
     return bool(*this) ?
             expected(std::invoke(std::forward<F>(f), **this)) :
             expected(unexpect, this->error());
@@ -2769,7 +2777,7 @@ expected<T,E> expected<T,E>::and_then(F&& f) & {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-expected<T,E> expected<T,E>::and_then(F&& f) const & {
+constexpr expected<T,E> expected<T,E>::and_then(F&& f) const & {
     return bool(*this) ?
             expected(std::invoke(std::forward<F>(f), **this)) :
             expected(unexpect, this->error());
@@ -2778,7 +2786,7 @@ expected<T,E> expected<T,E>::and_then(F&& f) const & {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-expected<T,E> expected<T,E>::and_then(F&& f) && {
+constexpr expected<T,E> expected<T,E>::and_then(F&& f) && {
     return bool(*this) ?
             expected(std::invoke(std::forward<F>(f), std::move(**this))) :
             expected(unexpect, std::move(this->error()));
@@ -2787,7 +2795,7 @@ expected<T,E> expected<T,E>::and_then(F&& f) && {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-expected<T,E> expected<T,E>::and_then(F&& f) const && {
+constexpr expected<T,E> expected<T,E>::and_then(F&& f) const && {
     return bool(*this) ?
             expected(std::invoke(std::forward<F>(f), std::move(**this))) :
             expected(unexpect, std::move(this->error()));
@@ -2796,7 +2804,7 @@ expected<T,E> expected<T,E>::and_then(F&& f) const && {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-expected<T,E> expected<T,E>::or_else(F&& f) & {
+constexpr expected<T,E> expected<T,E>::or_else(F&& f) & {
     static_assert(std::is_same_v<E, std::invoke_result_t<F,E&>>,
                   "Callable F must return an instance of type E");
 
@@ -2809,7 +2817,7 @@ expected<T,E> expected<T,E>::or_else(F&& f) & {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-expected<T,E> expected<T,E>::or_else(F&& f) const & {
+constexpr expected<T,E> expected<T,E>::or_else(F&& f) const & {
     static_assert(std::is_same_v<E, std::invoke_result_t<F,E const&>>,
                   "Callable F must return an instance of type E");
 
@@ -2822,7 +2830,7 @@ expected<T,E> expected<T,E>::or_else(F&& f) const & {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-expected<T,E> expected<T,E>::or_else(F&& f) && {
+constexpr expected<T,E> expected<T,E>::or_else(F&& f) && {
     static_assert(std::is_same_v<E, std::invoke_result_t<F,E&&>>,
                   "Callable F must return an instance of type E");
 
@@ -2836,7 +2844,7 @@ expected<T,E> expected<T,E>::or_else(F&& f) && {
 template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
-expected<T,E> expected<T,E>::or_else(F&& f) const && {
+constexpr expected<T,E> expected<T,E>::or_else(F&& f) const && {
     static_assert(std::is_same_v<E, std::invoke_result_t<F,E const&&>>,
                   "Callable F must return an instance of type E");
 
@@ -2925,39 +2933,39 @@ class expected<void, E> : public impl::expected_interface_base<void,E> {
 
         #ifdef VIEN_EXPECTED_EXTENDED
         template <typename F>
-        expected<std::decay_t<std::invoke_result_t<F>>, E>
+        constexpr expected<std::decay_t<std::invoke_result_t<F>>, E>
             map(F&&) &;
         template <typename F>
-        expected<std::decay_t<std::invoke_result_t<F>>, E>
+        constexpr expected<std::decay_t<std::invoke_result_t<F>>, E>
             map(F&&) const &;
         template <typename F>
-        expected<std::decay_t<std::invoke_result_t<F>>, E>
+        constexpr expected<std::decay_t<std::invoke_result_t<F>>, E>
             map(F&&) &&;
         template <typename F>
-        expected<std::decay_t<std::invoke_result_t<F>>, E>
+        constexpr expected<std::decay_t<std::invoke_result_t<F>>, E>
             map(F&&) const &&;
 
         template <typename F>
-        expected<void, std::decay_t<std::invoke_result_t<F,E>>>
+        constexpr expected<void, std::decay_t<std::invoke_result_t<F,E>>>
             map_error(F&&) &;
         template <typename F>
-        expected<void, std::decay_t<std::invoke_result_t<F,E>>>
+        constexpr expected<void, std::decay_t<std::invoke_result_t<F,E>>>
             map_error(F&&) const &;
         template <typename F>
-        expected<void, std::decay_t<std::invoke_result_t<F,E>>>
+        constexpr expected<void, std::decay_t<std::invoke_result_t<F,E>>>
             map_error(F&&) &&;
         template <typename F>
-        expected<void, std::decay_t<std::invoke_result_t<F,E>>>
+        constexpr expected<void, std::decay_t<std::invoke_result_t<F,E>>>
             map_error(F&&) const &&;
 
         template <typename F>
-        expected or_else(F&&) &;
+        constexpr expected or_else(F&&) &;
         template <typename F>
-        expected or_else(F&&) const &;
+        constexpr expected or_else(F&&) const &;
         template <typename F>
-        expected or_else(F&&) &&;
+        constexpr expected or_else(F&&) &&;
         template <typename F>
-        expected or_else(F&&) const &&;
+        constexpr expected or_else(F&&) const &&;
         #endif
 };
 
@@ -3070,7 +3078,7 @@ constexpr bool operator!=(expected<void, E1> const& x, expected<void, E2> const&
 template <typename E>
 template <typename F>
 [[nodiscard]]
-expected<std::decay_t<std::invoke_result_t<F>>, E>
+constexpr expected<std::decay_t<std::invoke_result_t<F>>, E>
 expected<void,E>::map(F&& f) & {
 
     using result_t = impl::expected_mapped_type_t<void,E,F>;
@@ -3092,7 +3100,7 @@ expected<void,E>::map(F&& f) & {
 template <typename E>
 template <typename F>
 [[nodiscard]]
-expected<std::decay_t<std::invoke_result_t<F>>, E>
+constexpr expected<std::decay_t<std::invoke_result_t<F>>, E>
 expected<void,E>::map(F&& f) const & {
 
     using result_t = impl::expected_mapped_type_t<void,E,F>;
@@ -3114,7 +3122,7 @@ expected<void,E>::map(F&& f) const & {
 template <typename E>
 template <typename F>
 [[nodiscard]]
-expected<std::decay_t<std::invoke_result_t<F>>, E>
+constexpr expected<std::decay_t<std::invoke_result_t<F>>, E>
 expected<void,E>::map(F&& f) && {
 
     using result_t = impl::expected_mapped_type_t<void,E,F>;
@@ -3136,7 +3144,7 @@ expected<void,E>::map(F&& f) && {
 template <typename E>
 template <typename F>
 [[nodiscard]]
-expected<std::decay_t<std::invoke_result_t<F>>, E>
+constexpr expected<std::decay_t<std::invoke_result_t<F>>, E>
 expected<void,E>::map(F&& f) const && {
 
     using result_t = impl::expected_mapped_type_t<void,E,F>;
@@ -3158,7 +3166,7 @@ expected<void,E>::map(F&& f) const && {
 template <typename E>
 template <typename F>
 [[nodiscard]]
-expected<void, std::decay_t<std::invoke_result_t<F,E>>>
+constexpr expected<void, std::decay_t<std::invoke_result_t<F,E>>>
 expected<void, E>::map_error(F&& f) & {
 
     using result_t = impl::expected_mapped_error_type_t<void,E,F>;
@@ -3171,7 +3179,7 @@ expected<void, E>::map_error(F&& f) & {
 template <typename E>
 template <typename F>
 [[nodiscard]]
-expected<void, std::decay_t<std::invoke_result_t<F,E>>>
+constexpr expected<void, std::decay_t<std::invoke_result_t<F,E>>>
 expected<void, E>::map_error(F&& f) const & {
 
     using result_t = impl::expected_mapped_error_type_t<void,E,F>;
@@ -3184,7 +3192,7 @@ expected<void, E>::map_error(F&& f) const & {
 template <typename E>
 template <typename F>
 [[nodiscard]]
-expected<void, std::decay_t<std::invoke_result_t<F,E>>>
+constexpr expected<void, std::decay_t<std::invoke_result_t<F,E>>>
 expected<void, E>::map_error(F&& f) && {
 
     using result_t = impl::expected_mapped_error_type_t<void,E,F>;
@@ -3197,7 +3205,7 @@ expected<void, E>::map_error(F&& f) && {
 template <typename E>
 template <typename F>
 [[nodiscard]]
-expected<void, std::decay_t<std::invoke_result_t<F,E>>>
+constexpr expected<void, std::decay_t<std::invoke_result_t<F,E>>>
 expected<void, E>::map_error(F&& f) const && {
 
     using result_t = impl::expected_mapped_error_type_t<void,E,F>;
@@ -3210,7 +3218,7 @@ expected<void, E>::map_error(F&& f) const && {
 template <typename E>
 template <typename F>
 [[nodiscard]]
-expected<void,E> expected<void,E>::or_else(F&& f) & {
+constexpr expected<void,E> expected<void,E>::or_else(F&& f) & {
     static_assert(std::is_same_v<E, std::invoke_result_t<F,E&>>,
                   "Callable F must return an instance of type E");
 
@@ -3223,7 +3231,7 @@ expected<void,E> expected<void,E>::or_else(F&& f) & {
 template <typename E>
 template <typename F>
 [[nodiscard]]
-expected<void,E> expected<void,E>::or_else(F&& f) const & {
+constexpr expected<void,E> expected<void,E>::or_else(F&& f) const & {
     static_assert(std::is_same_v<E, std::invoke_result_t<F,E const&>>,
                   "Callable F must return an instance of type E");
 
@@ -3236,7 +3244,7 @@ expected<void,E> expected<void,E>::or_else(F&& f) const & {
 template <typename E>
 template <typename F>
 [[nodiscard]]
-expected<void,E> expected<void,E>::or_else(F&& f) && {
+constexpr expected<void,E> expected<void,E>::or_else(F&& f) && {
     static_assert(std::is_same_v<E, std::invoke_result_t<F,E&&>>,
                   "Callable F must return an instance of type E");
 
@@ -3250,7 +3258,7 @@ expected<void,E> expected<void,E>::or_else(F&& f) && {
 template <typename E>
 template <typename F>
 [[nodiscard]]
-expected<void,E> expected<void,E>::or_else(F&& f) const && {
+constexpr expected<void,E> expected<void,E>::or_else(F&& f) const && {
     static_assert(std::is_same_v<E, std::invoke_result_t<F,E const&&>>,
                   "Callable F must return an instance of type E");
 
