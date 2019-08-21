@@ -182,6 +182,15 @@ class expected {
         expected and_then(F&&) &&;
         template <typename F>
         expected and_then(F&&) const &&;
+
+        template <typename F>
+        expected or_else(F&&) &;
+        template <typename F>
+        expected or_else(F&&) const &;
+        template <typename F>
+        expected or_else(F&&) &&;
+        template <typename F>
+        expected or_else(F&&) const &&;
         #endif
 
     private:
