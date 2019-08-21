@@ -288,13 +288,13 @@ namespace std {
     template <class, class, class>
     class set;
 
-    template <class, class, class>
+    template <class, class, class, class>
     class map;
 
     template <class, class, class>
     class multiset;
 
-    template <class, class, class>
+    template <class, class, class, class>
     class multimap;
 
     template <class, class, class, class>
@@ -581,14 +581,10 @@ struct expected_mapped_type<void, E, F>
 template <typename T, typename E, typename F>
 using expected_mapped_type_t = typename expected_mapped_type<T,E,F>::type;
 
-/* Type returned by expected<T,E>::map_error. T may be void */
+/* Type returned by expected<T,E>::map_error. T may be void, E may not */
 template <typename T, typename E, typename F>
 struct expected_mapped_error_type
-    : type_is<expected<T, std::decay_t<std::invoke_result_t<F,E>>>>
-{
-    static_assert(!std::is_void_v<std::invoke_result_t<F,E>>,
-                  "Cannot map error to void");
-};
+    : type_is<expected<T, std::decay_t<std::invoke_result_t<F,E>>>> { };
 
 template <typename T, typename E, typename F>
 using expected_mapped_error_type_t = typename expected_mapped_error_type<T,E,F>::type;
@@ -615,7 +611,7 @@ inline bool constexpr is_allocator_v = is_allocator<T>::value;
 template <typename, typename = void>
 struct is_comparator : std::false_type { };
 
-/* true iff has a binary operator() that returns bool */
+/* true iff has an operator() taking two T refs and returns bool */
 template <template <typename> class C, typename T>
 struct is_comparator<C<T>, std::enable_if_t<
     std::is_same_v<bool, decltype(std::declval<C<T>>()(std::declval<T&>(), std::declval<T&>()))>
@@ -624,15 +620,53 @@ struct is_comparator<C<T>, std::enable_if_t<
 template <typename T>
 inline bool constexpr is_comparator_v = is_comparator<T>::value;
 
-/* Check if type is generated from std::hash */
-template <typename>
+/* Check if type is a hashing type */
+template <typename, typename = void>
 struct is_hash : std::false_type { };
 
-template <typename T>
-struct is_hash<std::hash<T>> : std::true_type { };
+/* H<T> is deemed a hashing type iff it
+ * - names an operator() taking a single instance of T and returns an std::size_t,
+ * - is default_constructible
+ * - is copy constructible
+ * - is destructible
+ * - is swappable */
+template <template <typename> class H, typename T>
+struct is_hash<H<T>,
+    std::enable_if_t<
+        std::is_same_v<std::size_t, decltype(
+            std::declval<H<T>>().operator()(std::declval<T>()))
+         > &&
+         std::is_default_constructible_v<H<T>> &&
+         std::is_copy_constructible_v<H<T>> &&
+         std::is_destructible_v<H<T>> &&
+         std::is_swappable_v<H<T>>
+    >>
+    : std::true_type { };
 
 template <typename T>
 inline bool constexpr is_hash_v = is_hash<T>::value;
+
+/* Check whether a container is associative */
+template <typename, typename = void>
+struct is_associative : std::false_type { };
+
+/* Deemed associative if it names nested key_type and mapped_type aliases */
+template <typename Container>
+struct is_associative<Container, std::void_t<typename Container::key_type,
+                                             typename Container::mapped_type>>
+    : std::true_type { };
+
+template <typename Container>
+inline bool constexpr is_associative_v = is_associative<Container>::value;
+
+template <typename>
+struct is_pair : std::false_type { };
+
+template <typename K, typename M>
+struct is_pair<std::pair<K,M>> : std::true_type { };
+
+template <typename T>
+inline bool constexpr is_pair_v = is_pair<T>::value;
 
 /* Rebind unary type argument template */
 template <typename, typename>
@@ -653,7 +687,6 @@ struct rebind_if_alloc : type_is<A> { };
 template <typename A, typename T>
 struct rebind_if_alloc<A, T, std::enable_if_t<is_allocator_v<A>>>
     : type_is<typename std::allocator_traits<A>::template rebind_alloc<T>> { };
-
 
 template <typename A, typename T>
 using rebind_if_alloc_t = typename rebind_if_alloc<A,T>::type;
@@ -682,25 +715,87 @@ using rebind_if_hash_t = typename rebind_if_hash<C,T>::type;
 
 /* Rebind container value_type, allocator_type, compare and
  * hasher typedefs */
-template <typename, typename>
+template <typename Container, typename,
+          bool = is_associative_v<Container>>
 struct rebind;
 
-/* Container is a template, rebind value_type from F to T,
+/* Container is a non-associative template,
+ * rebind value_type from F to T,
  * allocator<F> (if any) to allocator<T>,
  * compare<F> (if any) to compare<T>, and
  * hasher<F> (if any) to hasher<T>*/
 template <template <typename, typename...> class Container,
           typename F, typename T,
           typename... Args>
-struct rebind<Container<F, Args...>, T>
-    : type_is<Container<T,
-        rebind_if_hash_t<rebind_if_comparator_t<rebind_if_alloc_t<Args, T>, T>, T>...>
-      > { };
+struct rebind<Container<F, Args...>, T, false>
+    : type_is<
+        Container<T,
+            rebind_if_hash_t<
+                rebind_if_comparator_t<
+                    rebind_if_alloc_t<Args, T>,
+                 T>,
+            T>
+        ...>
+      >
+{
+    static_assert(!std::is_void_v<T>, "Cannot bind value_type to void");
+};
 
 /* Container is a standard array, rebind value_type from F to T
  * (size remains the same) */
 template <typename F, std::size_t N, typename T>
-struct rebind<std::array<F,N>, T> : type_is<std::array<T,N>> { };
+struct rebind<std::array<F,N>, T, false>
+    : type_is<std::array<T,N>> {
+    static_assert(!std::is_void_v<T>, "Cannot bind value_type to void");
+};
+
+/* Container is associative and new type is an std::pair<K2,M2>,
+ * rebind key_type to K2,
+ * mapped_type to M2,
+ * allocator<std::pair<K1 const, M1>> (if any) to allocator<std::pair<K2 const, M2>>,
+ * comparator<K1> (if any) to comparator<K2>,
+ * hasher<K1> (if any) to hasher<K2> */
+template <template <typename, typename, typename...> class Container,
+          typename K1, typename M1,
+          typename K2, typename M2,
+          typename... Args>
+struct rebind<Container<K1, M1, Args...>, std::pair<K2, M2>, true>
+    : type_is<
+        Container<std::remove_cv_t<K2>, M2,
+            rebind_if_hash_t<
+                rebind_if_comparator_t<
+                    rebind_if_alloc_t<Args, std::pair<std::remove_cv_t<K2> const, M2>>,
+                    std::remove_cv_t<K2>>,
+                std::remove_cv_t<K2>>
+            ...>
+        >
+{
+    static_assert(!std::is_void_v<K2>, "Cannot bind key_type to void");
+    static_assert(!std::is_void_v<M2>, "Cannot bind mapped_type to void");
+};
+
+/* Container is associative and new type is a non-pair T,
+ * rebind key_type to K (original key type),
+ * mapped_type to T,
+ * allocator<std::pair<K const, M>>> (if any) to allocator<std::pair<K const, T>>,
+ * comparator<K> (if any) to comparator<K> (i.e. no change),
+ * hasher<K> (if any) to hasher<K> (i.e. no change) */
+template <template <typename, typename, typename...> class Container,
+          typename K, typename M, typename T,
+          typename... Args>
+struct rebind<Container<K, M, Args...>, T, true>
+    : type_is<
+        Container<std::remove_cv_t<K>, T,
+            rebind_if_hash_t<
+                rebind_if_comparator_t<
+                    rebind_if_alloc_t<Args, std::pair<std::remove_cv_t<K> const, T>>,
+                    std::remove_cv_t<K>>,
+               std::remove_cv_t<K>>
+            ...>
+        >
+{
+    static_assert(!std::is_void_v<T>, "Cannot bind mapped_type to void");
+};
 
 template <typename C, typename T>
 using rebind_t = typename rebind<C,T>::type;
@@ -880,6 +975,58 @@ struct insert_iterator<std::unordered_multimap<Key, T, Args...>>
 
 template <typename Container>
 using insert_iterator_t = typename insert_iterator<Container>::type;
+
+/* Class template invoking std::transform. Arguments are determined
+ * by template parameters.
+ * The primary template handles the cases when:
+ * - The container is not associative
+ * - The container is associative and the type FRet of the value returned from
+ *      callable F is an std::pair */
+template <typename SrcContainer, typename DstContainer, typename F, typename FRet,
+          bool = is_associative_v<SrcContainer>,
+          bool = is_pair_v<FRet>>
+struct invoke_transform {
+    /* src != dst, invoke transform on src and store in dst */
+    constexpr void operator()(SrcContainer& src, DstContainer& dst, F const& f) const {
+        std::transform(std::begin(src), std::end(src),
+                       insert_iterator_t<DstContainer>(dst),
+                       f);
+    };
+
+    constexpr void operator()(SrcContainer& src, F const& f) const {
+        std::transform(std::begin(src), std::end(src),
+                       std::begin(src), f);
+    };
+};
+
+/* Partial specialization for when the container is associative and the type FRet
+ * of the value returned from callable F is not an std::pair. This maps the
+ * value returned from f to the mapped slot in the pair. */
+template <typename SrcContainer, typename DstContainer, typename F, typename FRet>
+struct invoke_transform<SrcContainer, DstContainer, F, FRet, true, false> {
+
+    /* src != dst (may also differ in type). Invoke transform on src and store
+     * in dst. Invoke callable f in a lambda that maps the value returned from
+     * f to the mapped slot. The key will be the same as in src */
+    constexpr void operator()(SrcContainer& src, DstContainer& dst, F const& f) const {
+        std::transform(std::begin(src), std::end(src),
+                       insert_iterator_t<DstContainer>(dst),
+                       [&f](auto&& pair) {
+            auto const key = pair.first;
+            return std::make_pair(key, std::invoke(f, std::forward<decltype(pair)>(pair)));
+        });
+    };
+
+    /* Invoke transform on src and overwrite its content */
+    constexpr void operator()(SrcContainer& src, F const& f) const {
+        std::transform(std::begin(src), std::end(src),
+                       std::begin(src),
+                       [&f](auto&& pair) {
+            auto const key = pair.first;
+            return std::make_pair(key, std::invoke(f, std::forward<decltype(pair)>(pair)));
+        });
+    };
+};
 
 #endif
 
@@ -2386,8 +2533,8 @@ expected<
     impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>, E
 >
 expected<T,E>::map_range(F&& f) & {
-    using container_t =
-        impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>;
+    using invoke_t = std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>;
+    using container_t = impl::rebind_t<T, invoke_t>;
 
     using result_t = expected<container_t, E>;
 
@@ -2395,9 +2542,8 @@ expected<T,E>::map_range(F&& f) & {
         return result_t(unexpect, this->error());
 
     container_t tmp;
-    std::transform(std::begin(**this), std::end(**this),
-                   impl::insert_iterator_t<container_t>(tmp),
-                   std::forward<F>(f));
+    impl::invoke_transform<T, container_t, F, invoke_t>
+        {}(**this, tmp, std::forward<F>(f));
 
     return result_t(std::move(tmp));
 }
@@ -2409,8 +2555,8 @@ expected<
     impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>, E
 >
 expected<T,E>::map_range(F&& f) const & {
-    using container_t =
-        impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>;
+    using invoke_t = std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>;
+    using container_t = impl::rebind_t<T, invoke_t>;
 
     using result_t = expected<container_t, E>;
 
@@ -2418,9 +2564,8 @@ expected<T,E>::map_range(F&& f) const & {
         return result_t(unexpect, this->error());
 
     container_t tmp;
-    std::transform(std::begin(**this), std::end(**this),
-                   impl::insert_iterator_t<container_t>(tmp),
-                   std::forward<F>(f));
+    impl::invoke_transform<T, container_t, F, invoke_t>
+        {}(**this, tmp, std::forward<F>(f));
 
     return result_t(std::move(tmp));
 }
@@ -2432,8 +2577,8 @@ expected<
     impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>, E
 >
 expected<T,E>::map_range(F&& f) && {
-    using container_t =
-        impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>;
+    using invoke_t = std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>;
+    using container_t = impl::rebind_t<T, invoke_t>;
 
     using result_t = expected<container_t, E>;
 
@@ -2443,17 +2588,16 @@ expected<T,E>::map_range(F&& f) && {
     /* T and container_t are the same, transform **this and move
      * **this to new instance */
     if constexpr(std::is_same_v<T, container_t>) {
-        std::transform(std::begin(**this), std::end(**this),
-                       std::begin(**this), std::forward<F>(f));
+        impl::invoke_transform<T, container_t, F, invoke_t>
+            {}(**this, std::forward<F>(f));
 
         return result_t(std::move(**this));
     }
     /* T and container_t are not the same, must create new container */
     else {
         container_t tmp;
-        std::transform(std::begin(**this), std::end(**this),
-                       impl::insert_iterator_t<container_t>(tmp),
-                       std::forward<F>(f));
+        impl::invoke_transform<T, container_t, F, invoke_t>
+            {}(**this, tmp, std::forward<F>(f));
 
         return result_t(std::move(tmp));
     }
@@ -2466,8 +2610,8 @@ expected<
     impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>, E
 >
 expected<T,E>::map_range(F&& f) const && {
-    using container_t =
-        impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>;
+    using invoke_t = std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>;
+    using container_t = impl::rebind_t<T, invoke_t>;
 
     using result_t = expected<container_t, E>;
 
@@ -2475,16 +2619,15 @@ expected<T,E>::map_range(F&& f) const && {
         return result_t(unexpect, std::move(this->error()));
 
     if constexpr(std::is_same_v<T, container_t>) {
-        std::transform(std::begin(**this), std::end(**this),
-                       std::begin(**this), std::forward<F>(f));
+        impl::invoke_transform<T, container_t, F, invoke_t>
+            {}(**this, std::forward<F>(f));
 
         return result_t(std::move(**this));
     }
     else {
         container_t tmp;
-        std::transform(std::begin(**this), std::end(**this),
-                       impl::insert_iterator_t<container_t>(tmp),
-                       std::forward<F>(f));
+        impl::invoke_transform<T, container_t, F, invoke_t>
+            {}(**this, tmp, std::forward<F>(f));
 
         return result_t(std::move(tmp));
     }
