@@ -390,7 +390,8 @@ SCENARIO("rebind meta function", "[impl][rebind]") {
                                        std::string>);
                 REQUIRE(std::is_same_v<typename result_t::allocator_type,
                                        std::allocator<std::string>>);
-
+                REQUIRE(std::is_same_v<typename result_t::key_compare,
+                                       std::less<std::string>>);
             }
         }
     }
