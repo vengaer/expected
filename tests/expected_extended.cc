@@ -159,32 +159,32 @@ TEST_CASE("map_range available iff T is container", "[expected][map_range]") {
     REQUIRE(!has_map_range_v<expected<int, int>>);
 }
 
-TEST_CASE("rebind_unary_template meta function", "[impl][rebind_unary_template]") {
-    REQUIRE(std::is_same_v<impl::rebind_unary_template_t<std::less<int>, std::string>,
+TEST_CASE("rebind_unary_template meta function", "[expected_detail][rebind_unary_template]") {
+    REQUIRE(std::is_same_v<expected_detail::rebind_unary_template_t<std::less<int>, std::string>,
                            std::less<std::string>>);
-    REQUIRE(std::is_same_v<impl::rebind_if_hash_t<std::hash<int>, std::string>,
+    REQUIRE(std::is_same_v<expected_detail::rebind_if_hash_t<std::hash<int>, std::string>,
                            std::hash<std::string>>);
 }
 
-TEST_CASE("rebind associative container", "[impl][rebind]") {
+TEST_CASE("rebind associative container", "[expected_detail][rebind]") {
     /* std::map<int, std::string> -> std::map<std::string, int> */
-    REQUIRE(std::is_same_v<impl::rebind_t<std::map<int, std::string>,
+    REQUIRE(std::is_same_v<expected_detail::rebind_t<std::map<int, std::string>,
                                           std::pair<std::string, int>>,
                             std::map<std::string, int>>);
 
     /* std::map<int, std::string> -> std::map<int, int> */
-    REQUIRE(std::is_same_v<impl::rebind_t<std::map<int, std::string>, int>,
+    REQUIRE(std::is_same_v<expected_detail::rebind_t<std::map<int, std::string>, int>,
                             std::map<int, int>>);
 
     /* std::unordered_map<std::string, int> -> std::unordered_map<std::string, std::string> */
-    REQUIRE(std::is_same_v<impl::rebind_t<std::unordered_map<std::string, int>,
+    REQUIRE(std::is_same_v<expected_detail::rebind_t<std::unordered_map<std::string, int>,
                                         std::pair<std::string, std::string>>,
                             std::unordered_map<std::string, std::string>>);
 
     /* std::unordered_mulimap<std::string, int> ->
      *      std::unordered_multimap<std::vector<int>, std::string */
     REQUIRE(std::is_same_v<std::unordered_multimap<std::vector<int>, std::string>,
-                           impl::rebind_t<std::unordered_multimap<std::string, int>,
+                           expected_detail::rebind_t<std::unordered_multimap<std::string, int>,
                                           std::pair<std::vector<int>, std::string>>>);
 }
 
@@ -354,12 +354,12 @@ TEMPLATE_TEST_CASE("or_else invokes returns correct value", "[expected][extended
         REQUIRE(e4 == "str");
 }
 
-SCENARIO("rebind meta function", "[impl][rebind]") {
+SCENARIO("rebind meta function", "[expected_detail][rebind]") {
     GIVEN("An instance of type vector<int>") {
         std::vector<int> v;
 
         WHEN("Rebinding the value type to std::string") {
-            using result_t = impl::rebind_t<decltype(v), std::string>;
+            using result_t = expected_detail::rebind_t<decltype(v), std::string>;
 
             THEN("The value and allocator types are rebound correctly") {
                 REQUIRE(std::is_same_v<std::vector<std::string>, result_t>);
@@ -373,7 +373,7 @@ SCENARIO("rebind meta function", "[impl][rebind]") {
         std::array<int, 4> a;
 
         WHEN("Rebinding the value type to std::string") {
-            using result_t = impl::rebind_t<decltype(a), std::string>;
+            using result_t = expected_detail::rebind_t<decltype(a), std::string>;
 
             THEN("The value type is rebound correcty") {
                 REQUIRE(std::is_same_v<result_t, std::array<std::string, 4>>);
@@ -384,7 +384,7 @@ SCENARIO("rebind meta function", "[impl][rebind]") {
         std::set<int> s;
 
         WHEN("Rebinding the value type to std::string") {
-            using result_t = impl::rebind_t<decltype(s), std::string>;
+            using result_t = expected_detail::rebind_t<decltype(s), std::string>;
             THEN("The value type, allocator and comparator are rebound correctly") {
                 REQUIRE(std::is_same_v<typename result_t::value_type,
                                        std::string>);
@@ -399,7 +399,7 @@ SCENARIO("rebind meta function", "[impl][rebind]") {
         std::unordered_set<int> s;
 
         WHEN("Rebinding the value type to std::string") {
-            using result_t = impl::rebind_t<decltype(s), std::string>;
+            using result_t = expected_detail::rebind_t<decltype(s), std::string>;
             THEN("The value type, allocator and hash type are rebound correctly") {
                 REQUIRE(std::is_same_v<typename result_t::value_type,
                                        std::string>);
@@ -414,7 +414,7 @@ SCENARIO("rebind meta function", "[impl][rebind]") {
         std::unordered_multimap<std::string, int> umm;
 
         WHEN("Rebinding the mapped type to double via non-pair") {
-            using result_t = impl::rebind_t<decltype(umm), double>;
+            using result_t = expected_detail::rebind_t<decltype(umm), double>;
             THEN("The mapped type, allocator, hasher and comparator are rebound correctly") {
                 REQUIRE(std::is_same_v<typename result_t::mapped_type, double>);
                 REQUIRE(std::is_same_v<typename result_t::hasher,

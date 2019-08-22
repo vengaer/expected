@@ -358,7 +358,7 @@ template <typename>
 class bad_expected_access;
 
 
-namespace impl {
+namespace expected_detail {
 
 template <typename T>
 using remove_cvref = std::remove_cv<std::remove_reference_t<T>>;
@@ -1626,7 +1626,7 @@ struct expected_move_assign_base<T, E, true>
  * Operations unique to when either T is void or T is non-void are
  * provided in derived classes */
 template <typename T, typename E>
-class expected_interface_base : impl::expected_move_assign_base<T,E> {
+class expected_interface_base : expected_move_assign_base<T,E> {
     static_assert(!std::is_reference_v<T>, "T must not be reference");
     static_assert(!std::is_reference_v<E>, "E must not be reference");
     static_assert(!std::is_same_v<T, std::remove_cv_t<unexpected<E>>>,
@@ -1913,13 +1913,13 @@ constexpr unexpected<E> const&& expected_interface_base<T,E>::internal_get_unexp
     return std::move(base_t::internal_get_unexpect());
 }
 
-} /* namespace impl */
+} /* namespace expected_detail */
 
 
 /* Primary template (T is not void) */
 template <typename T, typename E>
-class expected : public impl::expected_interface_base<T,E> {
-    using base_t = impl::expected_interface_base<T,E>;
+class expected : public expected_detail::expected_interface_base<T,E> {
+    using base_t = expected_detail::expected_interface_base<T,E>;
     public:
         using value_type = T;
         using error_type = E;
@@ -1938,17 +1938,21 @@ class expected : public impl::expected_interface_base<T,E> {
         /* Conditionally explicit perfect forwarding conversion ctor */
         template <typename U = T, typename TT = T, typename EE = E,
                   typename = std::enable_if_t<
-                      impl::expected_enable_forwarding_ref_ctor_v<TT, EE, U>
+                      expected_detail::
+                          expected_enable_forwarding_ref_ctor_v<TT, EE, U>
                   >,
                   typename = std::enable_if_t<
-                      impl::expected_enable_implicit_forwarding_ref_ctor_v<TT, U>
+                      expected_detail::
+                          expected_enable_implicit_forwarding_ref_ctor_v<TT, U>
                   >>
         constexpr expected(U&&);
 
         template <typename U = T, typename TT = T, typename EE = E,
                   typename = std::enable_if_t<
-                      impl::expected_enable_forwarding_ref_ctor_v<TT, EE, U> &&
-                     !impl::expected_enable_implicit_forwarding_ref_ctor_v<TT, U>
+                      expected_detail::
+                          expected_enable_forwarding_ref_ctor_v<TT, EE, U> &&
+                     !expected_detail::
+                          expected_enable_implicit_forwarding_ref_ctor_v<TT, U>
                   >>
         constexpr explicit expected(U&&);
 
@@ -1956,33 +1960,41 @@ class expected : public impl::expected_interface_base<T,E> {
         /* Conditionally explicit conversion constructors */
         template <typename U, typename G, typename TT = T, typename EE = E,
                   typename = std::enable_if_t<
-                      impl::expected_enable_copy_conversion_v<TT, EE, U, G>
+                      expected_detail::
+                          expected_enable_copy_conversion_v<TT, EE, U, G>
                   >,
                   typename = std::enable_if_t<
-                      impl::expected_enable_implicit_copy_conversion_v<TT, EE, U, G>
+                      expected_detail::
+                          expected_enable_implicit_copy_conversion_v<TT, EE, U, G>
                   >>
         constexpr expected(expected<U, G> const& rhs);
 
         template <typename U, typename G, typename TT = T, typename EE = E,
                   typename = std::enable_if_t<
-                      impl::expected_enable_copy_conversion_v<TT, EE, U, G> &&
-                     !impl::expected_enable_implicit_copy_conversion_v<TT, EE, U, G>
+                      expected_detail::
+                          expected_enable_copy_conversion_v<TT, EE, U, G> &&
+                     !expected_detail::
+                          expected_enable_implicit_copy_conversion_v<TT, EE, U, G>
                   >>
         constexpr explicit expected(expected<U, G> const& rhs);
 
         template <typename U, typename G, typename TT = T, typename EE = E,
                   typename = std::enable_if_t<
-                      impl::expected_enable_move_conversion_v<TT, EE, U, G>
+                      expected_detail::
+                          expected_enable_move_conversion_v<TT, EE, U, G>
                   >,
                   typename = std::enable_if_t<
-                      impl::expected_enable_implicit_move_conversion_v<TT, EE, U, G>
+                      expected_detail::
+                          expected_enable_implicit_move_conversion_v<TT, EE, U, G>
                   >>
         constexpr expected(expected<U,G>&& rhs);
 
         template <typename U, typename G, typename TT = T, typename EE = E,
                   typename = std::enable_if_t<
-                      impl::expected_enable_move_conversion_v<TT, EE, U, G> &&
-                     !impl::expected_enable_implicit_move_conversion_v<TT, EE, U, G>
+                      expected_detail::
+                          expected_enable_move_conversion_v<TT, EE, U, G> &&
+                     !expected_detail::
+                          expected_enable_implicit_move_conversion_v<TT, EE, U, G>
                   >>
         constexpr explicit expected(expected<U, G>&& rhs);
 
@@ -2000,7 +2012,8 @@ class expected : public impl::expected_interface_base<T,E> {
 
         template <typename U = T, typename TT = T, typename EE = E,
                   typename = std::enable_if_t<
-                      impl::expected_enable_unary_forwarding_assign_v<TT, EE, U>
+                      expected_detail::
+                          expected_enable_unary_forwarding_assign_v<TT, EE, U>
                    >>
         expected& operator=(U&&);
 
@@ -2018,7 +2031,7 @@ class expected : public impl::expected_interface_base<T,E> {
 
         template <typename TT = T, typename EE = E,
                   typename = std::enable_if_t<
-                      impl::expected_enable_swap_v<TT, EE>
+                      expected_detail::expected_enable_swap_v<TT, EE>
                   >>
         void swap(expected& rhs) noexcept(std::is_nothrow_move_constructible_v<T> &&
                                           std::is_nothrow_swappable_v<T> &&
@@ -2076,38 +2089,46 @@ class expected : public impl::expected_interface_base<T,E> {
 
         template <typename F, typename TT = T,
                   typename = std::enable_if_t<
-                      impl::is_container_v<TT>
+                      expected_detail::is_container_v<TT>
                   >>
-        constexpr expected<impl::rebind_t<T, std::decay_t<
-                                        std::invoke_result_t<F, impl::value_type_of_t<T>>>>,
-                 E>
+        constexpr expected<
+                      expected_detail::
+                          rebind_t<T, std::decay_t<
+                              std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>>,
+                  E>
             map_range(F&&) &;
 
         template <typename F, typename TT = T,
                   typename = std::enable_if_t<
-                      impl::is_container_v<TT>
+                      expected_detail::is_container_v<TT>
                   >>
-        constexpr expected<impl::rebind_t<T, std::decay_t<
-                                        std::invoke_result_t<F, impl::value_type_of_t<T>>>>,
-                 E>
+        constexpr expected<
+                      expected_detail::
+                          rebind_t<T, std::decay_t<
+                              std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>>,
+                  E>
             map_range(F&&) const &;
 
         template <typename F, typename TT = T,
                   typename = std::enable_if_t<
-                      impl::is_container_v<TT>
+                      expected_detail::is_container_v<TT>
                   >>
-        constexpr expected<impl::rebind_t<T, std::decay_t<
-                                        std::invoke_result_t<F, impl::value_type_of_t<T>>>>,
-                 E>
+        constexpr expected<
+                      expected_detail::
+                          rebind_t<T, std::decay_t<
+                              std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>>,
+                  E>
             map_range(F&&) &&;
 
         template <typename F, typename TT = T,
                   typename = std::enable_if_t<
-                      impl::is_container_v<TT>
+                      expected_detail::is_container_v<TT>
                   >>
-        constexpr expected<impl::rebind_t<T, std::decay_t<
-                                        std::invoke_result_t<F, impl::value_type_of_t<T>>>>,
-                 E>
+        constexpr expected<
+                      expected_detail::
+                          rebind_t<T, std::decay_t<
+                              std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>>,
+                  E>
             map_range(F&&) const &&;
 
         template <typename F>
@@ -2154,19 +2175,20 @@ class expected : public impl::expected_interface_base<T,E> {
 
 template <typename T, typename E>
 template <typename U, typename, typename, typename, typename>
-constexpr expected<T,E>::expected(U&& v) : base_t(impl::no_init) {
+constexpr expected<T,E>::expected(U&& v) : base_t(expected_detail::no_init) {
     this->store(std::forward<U>(v));
 }
 
 template <typename T, typename E>
 template <typename U, typename, typename, typename>
-constexpr expected<T,E>::expected(U&& v) : base_t(impl::no_init) {
+constexpr expected<T,E>::expected(U&& v) : base_t(expected_detail::no_init) {
     this->store(std::forward<U>(v));
 }
 
 template <typename T, typename E>
 template <typename U, typename G, typename, typename, typename, typename>
-constexpr expected<T,E>::expected(expected<U, G> const& rhs) : base_t(impl::no_init) {
+constexpr expected<T,E>::expected(expected<U, G> const& rhs)
+    : base_t(expected_detail::no_init) {
     if(bool(rhs))
         this->store(rhs.value());
     else
@@ -2175,7 +2197,8 @@ constexpr expected<T,E>::expected(expected<U, G> const& rhs) : base_t(impl::no_i
 
 template <typename T, typename E>
 template <typename U, typename G, typename, typename, typename>
-constexpr expected<T,E>::expected(expected<U, G> const& rhs) : base_t(impl::no_init) {
+constexpr expected<T,E>::expected(expected<U, G> const& rhs)
+    : base_t(expected_detail::no_init) {
     if(bool(rhs))
         this->store(rhs.value());
     else
@@ -2184,7 +2207,8 @@ constexpr expected<T,E>::expected(expected<U, G> const& rhs) : base_t(impl::no_i
 
 template <typename T, typename E>
 template <typename U, typename G, typename, typename, typename, typename>
-constexpr expected<T,E>::expected(expected<U, G>&& rhs) : base_t(impl::no_init) {
+constexpr expected<T,E>::expected(expected<U, G>&& rhs)
+    : base_t(expected_detail::no_init) {
     if(bool(rhs))
         this->store(std::move(rhs.value()));
     else
@@ -2193,7 +2217,8 @@ constexpr expected<T,E>::expected(expected<U, G>&& rhs) : base_t(impl::no_init) 
 
 template <typename T, typename E>
 template <typename U, typename G, typename, typename, typename>
-constexpr expected<T,E>::expected(expected<U, G>&& rhs) : base_t(impl::no_init) {
+constexpr expected<T,E>::expected(expected<U, G>&& rhs)
+    : base_t(expected_detail::no_init) {
     if(bool(rhs))
         this->store(std::move(rhs.value()));
     else
@@ -2202,14 +2227,15 @@ constexpr expected<T,E>::expected(expected<U, G>&& rhs) : base_t(impl::no_init) 
 
 template <typename T, typename E>
 template <typename... Args, typename>
-constexpr expected<T,E>::expected(in_place_t, Args&&... args) : base_t(impl::no_init) {
+constexpr expected<T,E>::expected(in_place_t, Args&&... args)
+    : base_t(expected_detail::no_init) {
     this->store(std::forward<Args>(args)...);
 }
 
 template <typename T, typename E>
 template <typename U, typename... Args, typename>
 constexpr expected<T,E>::expected(in_place_t, std::initializer_list<U> il, Args&&... args)
-    : base_t(impl::no_init) {
+    : base_t(expected_detail::no_init) {
     this->store(il, std::forward<Args>(args)...);
 }
 
@@ -2484,7 +2510,7 @@ template <typename F>
 constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
 expected<T,E>::map(F&& f) & {
 
-    using result_t = impl::expected_mapped_type_t<T,E,F>;
+    using result_t = expected_detail::expected_mapped_type_t<T,E,F>;
     using value_type = typename result_t::value_type;
 
     if constexpr(std::is_void_v<value_type>) {
@@ -2506,7 +2532,7 @@ template <typename F>
 constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
 expected<T,E>::map(F&& f) const & {
 
-    using result_t = impl::expected_mapped_type_t<T,E,F>;
+    using result_t = expected_detail::expected_mapped_type_t<T,E,F>;
     using value_type = typename result_t::value_type;
 
     if constexpr(std::is_void_v<value_type>) {
@@ -2528,7 +2554,7 @@ template <typename F>
 constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
 expected<T,E>::map(F&& f) && {
 
-    using result_t = impl::expected_mapped_type_t<T,E,F>;
+    using result_t = expected_detail::expected_mapped_type_t<T,E,F>;
     using value_type = typename result_t::value_type;
 
     if constexpr(std::is_void_v<value_type>) {
@@ -2550,7 +2576,7 @@ template <typename F>
 constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
 expected<T,E>::map(F&& f) const && {
 
-    using result_t = impl::expected_mapped_type_t<T,E,F>;
+    using result_t = expected_detail::expected_mapped_type_t<T,E,F>;
     using value_type = typename result_t::value_type;
 
     if constexpr(std::is_void_v<value_type>) {
@@ -2570,11 +2596,14 @@ template <typename T, typename E>
 template <typename F, typename, typename>
 [[nodiscard]]
 constexpr expected<
-    impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>, E
+    expected_detail::
+        rebind_t<T, std::decay_t<
+            std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>>, E
 >
 expected<T,E>::map_range(F&& f) & {
-    using invoke_t = std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>;
-    using container_t = impl::rebind_t<T, invoke_t>;
+    using invoke_t =
+        std::decay_t<std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>;
+    using container_t = expected_detail::rebind_t<T, invoke_t>;
 
     using result_t = expected<container_t, E>;
 
@@ -2582,7 +2611,7 @@ expected<T,E>::map_range(F&& f) & {
         return result_t(unexpect, this->error());
 
     container_t tmp;
-    impl::invoke_transform<T, container_t, F, invoke_t>
+    expected_detail::invoke_transform<T, container_t, F, invoke_t>
         {}(**this, tmp, std::forward<F>(f));
 
     return result_t(std::move(tmp));
@@ -2592,11 +2621,14 @@ template <typename T, typename E>
 template <typename F, typename, typename>
 [[nodiscard]]
 constexpr expected<
-    impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>, E
+    expected_detail::
+        rebind_t<T, std::decay_t<
+            std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>>, E
 >
 expected<T,E>::map_range(F&& f) const & {
-    using invoke_t = std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>;
-    using container_t = impl::rebind_t<T, invoke_t>;
+    using invoke_t =
+        std::decay_t<std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>;
+    using container_t = expected_detail::rebind_t<T, invoke_t>;
 
     using result_t = expected<container_t, E>;
 
@@ -2604,7 +2636,7 @@ expected<T,E>::map_range(F&& f) const & {
         return result_t(unexpect, this->error());
 
     container_t tmp;
-    impl::invoke_transform<T, container_t, F, invoke_t>
+    expected_detail::invoke_transform<T, container_t, F, invoke_t>
         {}(**this, tmp, std::forward<F>(f));
 
     return result_t(std::move(tmp));
@@ -2614,11 +2646,14 @@ template <typename T, typename E>
 template <typename F, typename, typename>
 [[nodiscard]]
 constexpr expected<
-    impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>, E
+    expected_detail::
+        rebind_t<T, std::decay_t<
+            std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>>, E
 >
 expected<T,E>::map_range(F&& f) && {
-    using invoke_t = std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>;
-    using container_t = impl::rebind_t<T, invoke_t>;
+    using invoke_t =
+        std::decay_t<std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>;
+    using container_t = expected_detail::rebind_t<T, invoke_t>;
 
     using result_t = expected<container_t, E>;
 
@@ -2628,7 +2663,7 @@ expected<T,E>::map_range(F&& f) && {
     /* T and container_t are the same, transform **this and move
      * **this to new instance */
     if constexpr(std::is_same_v<T, container_t>) {
-        impl::invoke_transform<T, container_t, F, invoke_t>
+        expected_detail::invoke_transform<T, container_t, F, invoke_t>
             {}(**this, std::forward<F>(f));
 
         return result_t(std::move(**this));
@@ -2636,7 +2671,7 @@ expected<T,E>::map_range(F&& f) && {
     /* T and container_t are not the same, must create new container */
     else {
         container_t tmp;
-        impl::invoke_transform<T, container_t, F, invoke_t>
+        expected_detail::invoke_transform<T, container_t, F, invoke_t>
             {}(**this, tmp, std::forward<F>(f));
 
         return result_t(std::move(tmp));
@@ -2647,11 +2682,14 @@ template <typename T, typename E>
 template <typename F, typename, typename>
 [[nodiscard]]
 constexpr expected<
-    impl::rebind_t<T, std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>>, E
+    expected_detail::
+        rebind_t<T, std::decay_t<
+            std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>>, E
 >
 expected<T,E>::map_range(F&& f) const && {
-    using invoke_t = std::decay_t<std::invoke_result_t<F, impl::value_type_of_t<T>>>;
-    using container_t = impl::rebind_t<T, invoke_t>;
+    using invoke_t =
+        std::decay_t<std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>;
+    using container_t = expected_detail::rebind_t<T, invoke_t>;
 
     using result_t = expected<container_t, E>;
 
@@ -2659,14 +2697,14 @@ expected<T,E>::map_range(F&& f) const && {
         return result_t(unexpect, std::move(this->error()));
 
     if constexpr(std::is_same_v<T, container_t>) {
-        impl::invoke_transform<T, container_t, F, invoke_t>
+        expected_detail::invoke_transform<T, container_t, F, invoke_t>
             {}(**this, std::forward<F>(f));
 
         return result_t(std::move(**this));
     }
     else {
         container_t tmp;
-        impl::invoke_transform<T, container_t, F, invoke_t>
+        expected_detail::invoke_transform<T, container_t, F, invoke_t>
             {}(**this, tmp, std::forward<F>(f));
 
         return result_t(std::move(tmp));
@@ -2679,7 +2717,7 @@ template <typename F>
 constexpr expected<T, std::decay_t<std::invoke_result_t<F,E>>>
 expected<T,E>::map_error(F&& f) & {
 
-    using result_t = impl::expected_mapped_error_type_t<T,E,F>;
+    using result_t = expected_detail::expected_mapped_error_type_t<T,E,F>;
 
     return bool(*this) ?
             result_t(**this) :
@@ -2692,7 +2730,7 @@ template <typename F>
 constexpr expected<T, std::decay_t<std::invoke_result_t<F,E>>>
 expected<T,E>::map_error(F&& f) const & {
 
-    using result_t = impl::expected_mapped_error_type_t<T,E,F>;
+    using result_t = expected_detail::expected_mapped_error_type_t<T,E,F>;
 
     return bool(*this) ?
             result_t(**this) :
@@ -2705,7 +2743,7 @@ template <typename F>
 constexpr expected<T, std::decay_t<std::invoke_result_t<F,E>>>
 expected<T,E>::map_error(F&& f) && {
 
-    using result_t = impl::expected_mapped_error_type_t<T,E,F>;
+    using result_t = expected_detail::expected_mapped_error_type_t<T,E,F>;
 
     return bool(*this) ?
             result_t(std::move(**this)) :
@@ -2718,7 +2756,7 @@ template <typename F>
 constexpr expected<T, std::decay_t<std::invoke_result_t<F,E>>>
 expected<T,E>::map_error(F&& f) const && {
 
-    using result_t = impl::expected_mapped_error_type_t<T,E,F>;
+    using result_t = expected_detail::expected_mapped_error_type_t<T,E,F>;
 
     return bool(*this) ?
             result_t(std::move(**this)) :
@@ -2854,8 +2892,8 @@ constexpr expected<T,E> expected<T,E>::or_else(F&& f) const && {
 #endif
 
 template <typename E>
-class expected<void, E> : public impl::expected_interface_base<void,E> {
-    using base_t = impl::expected_interface_base<void,E>;
+class expected<void, E> : public expected_detail::expected_interface_base<void,E> {
+    using base_t = expected_detail::expected_interface_base<void,E>;
     public:
         using value_type = void;
         using error_type = E;
@@ -2874,33 +2912,41 @@ class expected<void, E> : public impl::expected_interface_base<void,E> {
         /* Conditionally explicit conversion constructors */
         template <typename U, typename G, typename TT = void, typename EE = E,
                   typename = std::enable_if_t<
-                      impl::expected_enable_copy_conversion_v<TT, EE, U, G>
+                      expected_detail::
+                          expected_enable_copy_conversion_v<TT, EE, U, G>
                   >,
                   typename = std::enable_if_t<
-                      impl::expected_enable_implicit_copy_conversion_v<TT, EE, U, G>
+                      expected_detail::
+                          expected_enable_implicit_copy_conversion_v<TT, EE, U, G>
                   >>
         constexpr expected(expected<U, G> const& rhs);
 
         template <typename U, typename G, typename TT = void, typename EE = E,
                   typename = std::enable_if_t<
-                      impl::expected_enable_copy_conversion_v<TT, EE, U, G> &&
-                     !impl::expected_enable_implicit_copy_conversion_v<TT, EE, U, G>
+                      expected_detail::
+                          expected_enable_copy_conversion_v<TT, EE, U, G> &&
+                     !expected_detail::
+                          expected_enable_implicit_copy_conversion_v<TT, EE, U, G>
                   >>
         constexpr explicit expected(expected<U, G> const& rhs);
 
         template <typename U, typename G, typename TT = void, typename EE = E,
                   typename = std::enable_if_t<
-                      impl::expected_enable_move_conversion_v<TT, EE, U, G>
+                      expected_detail::
+                          expected_enable_move_conversion_v<TT, EE, U, G>
                   >,
                   typename = std::enable_if_t<
-                      impl::expected_enable_implicit_move_conversion_v<TT, EE, U, G>
+                      expected_detail::
+                          expected_enable_implicit_move_conversion_v<TT, EE, U, G>
                   >>
         constexpr expected(expected<U,G>&& rhs);
 
         template <typename U, typename G, typename TT = void, typename EE = E,
                   typename = std::enable_if_t<
-                      impl::expected_enable_move_conversion_v<TT, EE, U, G> &&
-                     !impl::expected_enable_implicit_move_conversion_v<TT, EE, U, G>
+                      expected_detail::
+                          expected_enable_move_conversion_v<TT, EE, U, G> &&
+                     !expected_detail::
+                          expected_enable_implicit_move_conversion_v<TT, EE, U, G>
                   >>
         constexpr explicit expected(expected<U, G>&& rhs);
 
@@ -2912,7 +2958,7 @@ class expected<void, E> : public impl::expected_interface_base<void,E> {
 
         template <typename TT = void, typename EE = E,
                   typename = std::enable_if_t<
-                      impl::expected_enable_swap_v<TT, EE>
+                      expected_detail::expected_enable_swap_v<TT, EE>
                   >>
         void swap(expected& rhs) noexcept(std::is_nothrow_move_constructible_v<E> &&
                                           std::is_nothrow_swappable_v<E>);
@@ -2967,7 +3013,8 @@ class expected<void, E> : public impl::expected_interface_base<void,E> {
 
 template <typename E>
 template <typename U, typename G, typename, typename, typename, typename>
-constexpr expected<void,E>::expected(expected<U, G> const& rhs) : base_t(impl::no_init) {
+constexpr expected<void,E>::expected(expected<U, G> const& rhs)
+    : base_t(expected_detail::no_init) {
     if(bool(rhs))
         this->store();
     else
@@ -2976,7 +3023,8 @@ constexpr expected<void,E>::expected(expected<U, G> const& rhs) : base_t(impl::n
 
 template <typename E>
 template <typename U, typename G, typename, typename, typename>
-constexpr expected<void,E>::expected(expected<U, G> const& rhs) : base_t(impl::no_init) {
+constexpr expected<void,E>::expected(expected<U, G> const& rhs)
+    : base_t(expected_detail::no_init) {
     if(bool(rhs))
         this->store();
     else
@@ -2985,7 +3033,8 @@ constexpr expected<void,E>::expected(expected<U, G> const& rhs) : base_t(impl::n
 
 template <typename E>
 template <typename U, typename G, typename, typename, typename, typename>
-constexpr expected<void,E>::expected(expected<U, G>&& rhs) : base_t(impl::no_init) {
+constexpr expected<void,E>::expected(expected<U, G>&& rhs)
+    : base_t(expected_detail::no_init) {
     if(bool(rhs))
         this->store();
     else
@@ -2994,7 +3043,8 @@ constexpr expected<void,E>::expected(expected<U, G>&& rhs) : base_t(impl::no_ini
 
 template <typename E>
 template <typename U, typename G, typename, typename, typename>
-constexpr expected<void,E>::expected(expected<U, G>&& rhs) : base_t(impl::no_init) {
+constexpr expected<void,E>::expected(expected<U, G>&& rhs)
+    : base_t(expected_detail::no_init) {
     if(bool(rhs))
         this->store();
     else
@@ -3003,7 +3053,8 @@ constexpr expected<void,E>::expected(expected<U, G>&& rhs) : base_t(impl::no_ini
 
 template <typename E>
 template <typename... Args, typename>
-constexpr expected<void, E>::expected(in_place_t, Args&&...) : base_t(impl::no_init) {
+constexpr expected<void, E>::expected(in_place_t, Args&&...)
+    : base_t(expected_detail::no_init) {
     this->store();
 }
 
@@ -3077,7 +3128,7 @@ template <typename F>
 constexpr expected<std::decay_t<std::invoke_result_t<F>>, E>
 expected<void,E>::map(F&& f) & {
 
-    using result_t = impl::expected_mapped_type_t<void,E,F>;
+    using result_t = expected_detail::expected_mapped_type_t<void,E,F>;
     using value_type = typename result_t::value_type;
 
     if constexpr(std::is_void_v<value_type>) {
@@ -3099,7 +3150,7 @@ template <typename F>
 constexpr expected<std::decay_t<std::invoke_result_t<F>>, E>
 expected<void,E>::map(F&& f) const & {
 
-    using result_t = impl::expected_mapped_type_t<void,E,F>;
+    using result_t = expected_detail::expected_mapped_type_t<void,E,F>;
     using value_type = typename result_t::value_type;
 
     if constexpr(std::is_void_v<value_type>) {
@@ -3121,7 +3172,7 @@ template <typename F>
 constexpr expected<std::decay_t<std::invoke_result_t<F>>, E>
 expected<void,E>::map(F&& f) && {
 
-    using result_t = impl::expected_mapped_type_t<void,E,F>;
+    using result_t = expected_detail::expected_mapped_type_t<void,E,F>;
     using value_type = typename result_t::value_type;
 
     if constexpr(std::is_void_v<value_type>) {
@@ -3143,7 +3194,7 @@ template <typename F>
 constexpr expected<std::decay_t<std::invoke_result_t<F>>, E>
 expected<void,E>::map(F&& f) const && {
 
-    using result_t = impl::expected_mapped_type_t<void,E,F>;
+    using result_t = expected_detail::expected_mapped_type_t<void,E,F>;
     using value_type = typename result_t::value_type;
 
     if constexpr(std::is_void_v<value_type>) {
@@ -3165,7 +3216,7 @@ template <typename F>
 constexpr expected<void, std::decay_t<std::invoke_result_t<F,E>>>
 expected<void, E>::map_error(F&& f) & {
 
-    using result_t = impl::expected_mapped_error_type_t<void,E,F>;
+    using result_t = expected_detail::expected_mapped_error_type_t<void,E,F>;
 
     return bool(*this) ?
             result_t{} :
@@ -3178,7 +3229,7 @@ template <typename F>
 constexpr expected<void, std::decay_t<std::invoke_result_t<F,E>>>
 expected<void, E>::map_error(F&& f) const & {
 
-    using result_t = impl::expected_mapped_error_type_t<void,E,F>;
+    using result_t = expected_detail::expected_mapped_error_type_t<void,E,F>;
 
     return bool(*this) ?
             result_t{} :
@@ -3191,7 +3242,7 @@ template <typename F>
 constexpr expected<void, std::decay_t<std::invoke_result_t<F,E>>>
 expected<void, E>::map_error(F&& f) && {
 
-    using result_t = impl::expected_mapped_error_type_t<void,E,F>;
+    using result_t = expected_detail::expected_mapped_error_type_t<void,E,F>;
 
     return bool(*this) ?
             result_t{} :
@@ -3204,7 +3255,7 @@ template <typename F>
 constexpr expected<void, std::decay_t<std::invoke_result_t<F,E>>>
 expected<void, E>::map_error(F&& f) const && {
 
-    using result_t = impl::expected_mapped_error_type_t<void,E,F>;
+    using result_t = expected_detail::expected_mapped_error_type_t<void,E,F>;
 
     return bool(*this) ?
             result_t{} :
