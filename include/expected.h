@@ -694,6 +694,17 @@ struct is_pair<std::pair<K,M>> : std::true_type { };
 template <typename T>
 inline bool constexpr is_pair_v = is_pair<T>::value;
 
+/* Get value_type of T, if available. Otherwise, return T */
+template <typename T, typename = void>
+struct value_type_of : type_is<T> { };
+
+template <typename T>
+struct value_type_of<T, std::void_t<typename T::value_type>>
+    : type_is<typename T::value_type> { };
+
+template <typename T>
+using value_type_of_t = typename value_type_of<T>::type;
+
 /* Rebind unary type argument template */
 template <typename, typename>
 struct rebind_unary_template;
@@ -826,6 +837,18 @@ struct rebind<Container<K, M, Args...>, T, true>
 template <typename C, typename T>
 using rebind_t = typename rebind<C,T>::type;
 
+/* Convenience meta function for invoking rebind. Calls rebind_t
+ * with T and decayed return type of invoking an instance of F with
+ * and instance of T */
+template <typename T, typename F>
+struct rebind_to_invoke_result
+    : type_is<rebind_t<T,
+          std::decay_t<std::invoke_result_t<F, value_type_of_t<T>>>>> { };
+
+template <typename T, typename F>
+using rebind_to_invoke_result_t = typename rebind_to_invoke_result<T,F>::type;
+
+
 /* Check if T is a container */
 template <typename T, typename = void>
 struct is_container : std::false_type { };
@@ -838,17 +861,6 @@ struct is_container<T, std::void_t<decltype(std::begin(std::declval<T&>())),
 
 template <typename T>
 inline bool constexpr is_container_v = is_container<T>::value;
-
-/* Get value_type of T, if available. Otherwise, return T */
-template <typename T, typename = void>
-struct value_type_of : type_is<T> { };
-
-template <typename T>
-struct value_type_of<T, std::void_t<typename T::value_type>>
-    : type_is<typename T::value_type> { };
-
-template <typename T>
-using value_type_of_t = typename value_type_of<T>::type;
 
 /* Output iterator for std::array<T,N> */
 template <typename>
@@ -2091,44 +2103,28 @@ class expected : public expected_detail::expected_interface_base<T,E> {
                   typename = std::enable_if_t<
                       expected_detail::is_container_v<TT>
                   >>
-        constexpr expected<
-                      expected_detail::
-                          rebind_t<T, std::decay_t<
-                              std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>>,
-                  E>
+        constexpr expected<expected_detail::rebind_to_invoke_result_t<T,F>, E>
             map_range(F&&) &;
 
         template <typename F, typename TT = T,
                   typename = std::enable_if_t<
                       expected_detail::is_container_v<TT>
                   >>
-        constexpr expected<
-                      expected_detail::
-                          rebind_t<T, std::decay_t<
-                              std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>>,
-                  E>
+        constexpr expected<expected_detail::rebind_to_invoke_result_t<T,F>, E>
             map_range(F&&) const &;
 
         template <typename F, typename TT = T,
                   typename = std::enable_if_t<
                       expected_detail::is_container_v<TT>
                   >>
-        constexpr expected<
-                      expected_detail::
-                          rebind_t<T, std::decay_t<
-                              std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>>,
-                  E>
+        constexpr expected<expected_detail::rebind_to_invoke_result_t<T,F>, E>
             map_range(F&&) &&;
 
         template <typename F, typename TT = T,
                   typename = std::enable_if_t<
                       expected_detail::is_container_v<TT>
                   >>
-        constexpr expected<
-                      expected_detail::
-                          rebind_t<T, std::decay_t<
-                              std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>>,
-                  E>
+        constexpr expected<expected_detail::rebind_to_invoke_result_t<T,F>, E>
             map_range(F&&) const &&;
 
         template <typename F>
@@ -2595,11 +2591,7 @@ expected<T,E>::map(F&& f) const && {
 template <typename T, typename E>
 template <typename F, typename, typename>
 [[nodiscard]]
-constexpr expected<
-    expected_detail::
-        rebind_t<T, std::decay_t<
-            std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>>, E
->
+constexpr expected<expected_detail::rebind_to_invoke_result_t<T,F>, E>
 expected<T,E>::map_range(F&& f) & {
     using invoke_t =
         std::decay_t<std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>;
@@ -2620,11 +2612,7 @@ expected<T,E>::map_range(F&& f) & {
 template <typename T, typename E>
 template <typename F, typename, typename>
 [[nodiscard]]
-constexpr expected<
-    expected_detail::
-        rebind_t<T, std::decay_t<
-            std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>>, E
->
+constexpr expected<expected_detail::rebind_to_invoke_result_t<T,F>, E>
 expected<T,E>::map_range(F&& f) const & {
     using invoke_t =
         std::decay_t<std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>;
@@ -2645,11 +2633,7 @@ expected<T,E>::map_range(F&& f) const & {
 template <typename T, typename E>
 template <typename F, typename, typename>
 [[nodiscard]]
-constexpr expected<
-    expected_detail::
-        rebind_t<T, std::decay_t<
-            std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>>, E
->
+constexpr expected<expected_detail::rebind_to_invoke_result_t<T,F>, E>
 expected<T,E>::map_range(F&& f) && {
     using invoke_t =
         std::decay_t<std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>;
@@ -2681,11 +2665,7 @@ expected<T,E>::map_range(F&& f) && {
 template <typename T, typename E>
 template <typename F, typename, typename>
 [[nodiscard]]
-constexpr expected<
-    expected_detail::
-        rebind_t<T, std::decay_t<
-            std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>>, E
->
+constexpr expected<expected_detail::rebind_to_invoke_result_t<T,F>, E>
 expected<T,E>::map_range(F&& f) const && {
     using invoke_t =
         std::decay_t<std::invoke_result_t<F, expected_detail::value_type_of_t<T>>>;
