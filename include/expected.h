@@ -300,40 +300,10 @@ class bad_expected_access : public bad_expected_access<void> {
 #endif
 
 #ifdef VIEN_EXPECTED_EXTENDED
-/* Forward declare necessary std members */
+/* Forward declare array */
 namespace std {
-    template <class>
-    class Allocator;
-
     template <typename, std::size_t>
     struct array;
-
-    template <class, class>
-    class forward_list;
-
-    template <class, class, class>
-    class set;
-
-    template <class, class, class, class>
-    class map;
-
-    template <class, class, class>
-    class multiset;
-
-    template <class, class, class, class>
-    class multimap;
-
-    template <class, class, class, class>
-    class unordered_set;
-
-    template <class, class, class, class, class>
-    class unordered_map;
-
-    template <class, class, class, class>
-    class unordered_multiset;
-
-    template <class, class, class, class, class>
-    class unordered_multimap;
 }
 #endif
 
@@ -862,6 +832,39 @@ struct is_container<T, std::void_t<decltype(std::begin(std::declval<T&>())),
 template <typename T>
 inline bool constexpr is_container_v = is_container<T>::value;
 
+template <typename, typename = void>
+struct names_unary_push_back : std::false_type { };
+
+template <typename T>
+struct names_unary_push_back<T,
+    std::void_t<decltype(std::declval<T>().push_back(std::declval<typename T::value_type>()))>>
+    : std::true_type { };
+
+template <typename T>
+inline bool constexpr names_unary_push_back_v = names_unary_push_back<T>::value;
+
+template <typename, typename = void>
+struct names_unary_push_front : std::false_type { };
+
+template <typename T>
+struct names_unary_push_front<T,
+    std::void_t<decltype(std::declval<T>().push_front(std::declval<typename T::value_type>()))>>
+    : std::true_type { };
+
+template <typename T>
+inline bool constexpr names_unary_push_front_v = names_unary_push_front<T>::value;
+
+template <typename, typename = void>
+struct names_unary_insert : std::false_type { };
+
+template <typename T>
+struct names_unary_insert<T,
+    std::void_t<decltype(std::declval<T>().insert(std::declval<typename T::value_type>()))>>
+    : std::true_type { };
+
+template <typename T>
+inline bool constexpr names_unary_insert_v = names_unary_insert<T>::value;
+
 /* Output iterator for std::array<T,N> */
 template <typename>
 class array_insert_iterator;
@@ -957,55 +960,34 @@ class ordered_insert_iterator {
 template <typename Container, typename = void>
 struct insert_iterator;
 
-/* If type names push_back, use std::back_insert_iterator */
-template <typename Container>
-struct insert_iterator<Container, std::void_t<
-    decltype(std::declval<Container&>().push_back(
-        std::declval<value_type_of_t<Container>>()
-    ))>> : type_is<std::back_insert_iterator<Container>> { };
-
 /* Use array_insert_iterator for std::array */
 template <typename T, std::size_t N>
 struct insert_iterator<std::array<T,N>>
     : type_is<array_insert_iterator<std::array<T,N>>> { };
 
-/* Use std::front_insert_iterator for std::forward_list */
-template <typename T, typename Alloc>
-struct insert_iterator<std::forward_list<T, Alloc>>
-    : type_is<std::front_insert_iterator<std::forward_list<T, Alloc>>> { };
+/* If type names push_back, use std::back_insert_iterator */
+template <typename Container>
+struct insert_iterator<Container, std::enable_if_t<
+    names_unary_push_back_v<Container>
+>>
+    : type_is<std::back_insert_iterator<Container>> { };
 
-/* Use ordered_insert_iterator for associative containers */
-template <typename T, typename... Args>
-struct insert_iterator<std::set<T, Args...>>
-    : type_is<ordered_insert_iterator<std::set<T, Args...>>> { };
+/* No push_back but has push_front */
+template <typename Container>
+struct insert_iterator<Container, std::enable_if_t<
+    !names_unary_push_back_v<Container> &&
+     names_unary_push_front_v<Container>
+>>
+    : type_is<std::front_insert_iterator<Container>> { };
 
-template <typename Key, typename T, typename... Args>
-struct insert_iterator<std::map<Key, T, Args...>>
-    : type_is<ordered_insert_iterator<std::map<Key, T, Args...>>> { };
-
-template <typename T, typename... Args>
-struct insert_iterator<std::multiset<T, Args...>>
-    : type_is<ordered_insert_iterator<std::multiset<T, Args...>>> { };
-
-template <typename Key, typename T, typename... Args>
-struct insert_iterator<std::multimap<Key, T, Args...>>
-    : type_is<ordered_insert_iterator<std::multimap<Key, T, Args...>>> { };
-
-template <typename T, typename... Args>
-struct insert_iterator<std::unordered_set<T, Args...>>
-    : type_is<ordered_insert_iterator<std::unordered_set<T, Args...>>> { };
-
-template <typename Key, typename T, typename... Args>
-struct insert_iterator<std::unordered_map<Key, T, Args...>>
-    : type_is<ordered_insert_iterator<std::unordered_map<Key, T, Args...>>> { };
-
-template <typename T, typename... Args>
-struct insert_iterator<std::unordered_multiset<T, Args...>>
-    : type_is<ordered_insert_iterator<std::unordered_multiset<T, Args...>>> { };
-
-template <typename Key, typename T, typename... Args>
-struct insert_iterator<std::unordered_multimap<Key, T, Args...>>
-    : type_is<ordered_insert_iterator<std::unordered_multimap<Key, T, Args...>>> { };
+/* No push_back, no push_front but has unary insert */
+template <typename Container>
+struct insert_iterator<Container, std::enable_if_t<
+    !names_unary_push_back_v<Container> &&
+    !names_unary_push_front_v<Container> &&
+     names_unary_insert_v<Container>
+>>
+    : type_is<ordered_insert_iterator<Container>> { };
 
 template <typename Container>
 using insert_iterator_t = typename insert_iterator<Container>::type;
