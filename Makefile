@@ -8,7 +8,7 @@ INC = -I tests/ -I include
 
 export CPPFLAGS
 
-CXXFLAGS := $(CXXFLAGS) -std=c++17 -Wall -Wextra -pedantic -Weffc++ $(INC)
+CXXFLAGS := $(CXXFLAGS) -std=c++17 -Wall -Wextra -pedantic -Weffc++ -Wshadow $(INC)
 
 $(BIN): $(OBJ)
 	$(CXX) -o $@ $^ $(CXXFLAGS)
