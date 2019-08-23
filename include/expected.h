@@ -2489,9 +2489,9 @@ constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
 expected<T,E>::map(F&& f) & {
 
     using result_t = expected_detail::expected_mapped_type_t<T,E,F>;
-    using value_type = typename result_t::value_type;
+    using result_value_t = typename result_t::value_type;
 
-    if constexpr(std::is_void_v<value_type>) {
+    if constexpr(std::is_void_v<result_value_t>) {
         std::invoke(std::forward<F>(f), **this);
         return bool(*this) ?
             result_t{} :
@@ -2511,9 +2511,9 @@ constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
 expected<T,E>::map(F&& f) const & {
 
     using result_t = expected_detail::expected_mapped_type_t<T,E,F>;
-    using value_type = typename result_t::value_type;
+    using result_value_t = typename result_t::value_type;
 
-    if constexpr(std::is_void_v<value_type>) {
+    if constexpr(std::is_void_v<result_value_t>) {
         std::invoke(std::forward<F>(f), **this);
         return bool(*this) ?
             result_t{} :
@@ -2533,9 +2533,9 @@ constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
 expected<T,E>::map(F&& f) && {
 
     using result_t = expected_detail::expected_mapped_type_t<T,E,F>;
-    using value_type = typename result_t::value_type;
+    using result_value_t = typename result_t::value_type;
 
-    if constexpr(std::is_void_v<value_type>) {
+    if constexpr(std::is_void_v<result_value_t>) {
         std::invoke(std::forward<F>(f), std::move(**this));
         return bool(*this) ?
             result_t{} :
@@ -2555,9 +2555,9 @@ constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
 expected<T,E>::map(F&& f) const && {
 
     using result_t = expected_detail::expected_mapped_type_t<T,E,F>;
-    using value_type = typename result_t::value_type;
+    using result_value_t = typename result_t::value_type;
 
-    if constexpr(std::is_void_v<value_type>) {
+    if constexpr(std::is_void_v<result_value_t>) {
         std::invoke(std::forward<F>(f), std::move(**this));
         return bool(*this) ?
             result_t{} :
@@ -3091,9 +3091,9 @@ constexpr expected<std::decay_t<std::invoke_result_t<F>>, E>
 expected<void,E>::map(F&& f) & {
 
     using result_t = expected_detail::expected_mapped_type_t<void,E,F>;
-    using value_type = typename result_t::value_type;
+    using result_value_t = typename result_t::value_type;
 
-    if constexpr(std::is_void_v<value_type>) {
+    if constexpr(std::is_void_v<result_value_t>) {
         std::invoke(std::forward<F>(f));
         return bool(*this) ?
             result_t{} :
@@ -3113,9 +3113,9 @@ constexpr expected<std::decay_t<std::invoke_result_t<F>>, E>
 expected<void,E>::map(F&& f) const & {
 
     using result_t = expected_detail::expected_mapped_type_t<void,E,F>;
-    using value_type = typename result_t::value_type;
+    using result_value_t = typename result_t::value_type;
 
-    if constexpr(std::is_void_v<value_type>) {
+    if constexpr(std::is_void_v<result_value_t>) {
         std::invoke(std::forward<F>(f));
         return bool(*this) ?
             result_t{} :
@@ -3135,9 +3135,9 @@ constexpr expected<std::decay_t<std::invoke_result_t<F>>, E>
 expected<void,E>::map(F&& f) && {
 
     using result_t = expected_detail::expected_mapped_type_t<void,E,F>;
-    using value_type = typename result_t::value_type;
+    using result_value_t = typename result_t::value_type;
 
-    if constexpr(std::is_void_v<value_type>) {
+    if constexpr(std::is_void_v<result_value_t>) {
         std::invoke(std::forward<F>(f));
         return bool(*this) ?
             result_t{} :
@@ -3157,9 +3157,9 @@ constexpr expected<std::decay_t<std::invoke_result_t<F>>, E>
 expected<void,E>::map(F&& f) const && {
 
     using result_t = expected_detail::expected_mapped_type_t<void,E,F>;
-    using value_type = typename result_t::value_type;
+    using result_value_t = typename result_t::value_type;
 
-    if constexpr(std::is_void_v<value_type>) {
+    if constexpr(std::is_void_v<result_value_t>) {
         std::invoke(std::forward<F>(f));
         return bool(*this) ?
             result_t{} :
