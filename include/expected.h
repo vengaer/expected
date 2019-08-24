@@ -864,53 +864,6 @@ struct names_unary_insert<T,
 
 template <typename T>
 inline bool constexpr names_unary_insert_v = names_unary_insert<T>::value;
-
-/* Output iterator for std::array<T,N> */
-template <typename>
-class array_insert_iterator;
-
-template <typename T, std::size_t N>
-class array_insert_iterator<std::array<T, N>> {
-    public:
-        using iterator_category = std::output_iterator_tag;
-        using value_type = void;
-        using difference_type = void;
-        using pointer = void;
-        using reference = void;
-        using container_type = std::array<T,N>;
-
-        constexpr array_insert_iterator() noexcept = default;
-        constexpr array_insert_iterator(std::array<T,N>& c)
-            : ctr_{std::addressof(c)} { }
-
-        constexpr array_insert_iterator& operator=(T const& v) {
-            (*ctr_)[idx_++] = v;
-            return *this;
-        }
-
-        constexpr array_insert_iterator& operator=(T&& v) {
-            (*ctr_)[idx_++] = std::move(v);
-            return *this;
-        }
-
-        constexpr array_insert_iterator& operator*() {
-            return *this;
-        }
-
-        constexpr array_insert_iterator& operator++() {
-            return *this;
-        }
-
-        constexpr array_insert_iterator operator++(int) {
-            auto cpy = *this;
-            return cpy;
-        }
-
-    private:
-        std::array<T,N>* ctr_;
-        std::size_t idx_{0};
-};
-
 /* Output iterator for types whose only means
  * of insertion are through call to unary insert */
 template <typename Container>
@@ -956,41 +909,47 @@ class ordered_insert_iterator {
         Container* ctr_;
 };
 
-/* Get suitable output iterator Container */
+
+/* Convenience class template whos operator() constructs
+ * an ouput iterator appropriate for the container */
 template <typename Container, typename = void>
-struct insert_iterator;
+struct universal_inserter;
 
-/* Use array_insert_iterator for std::array */
+/* Array, use begin */
 template <typename T, std::size_t N>
-struct insert_iterator<std::array<T,N>>
-    : type_is<array_insert_iterator<std::array<T,N>>> { };
+struct universal_inserter<std::array<T,N>> {
+    constexpr typename std::array<T,N>::iterator operator()(std::array<T,N>& c) {
+        return std::begin(c);
+    }
+};
 
-/* If type names push_back, use std::back_insert_iterator */
+/* Container has push_back, use std::back_insert_iterator */
 template <typename Container>
-struct insert_iterator<Container, std::enable_if_t<
-    names_unary_push_back_v<Container>
->>
-    : type_is<std::back_insert_iterator<Container>> { };
+struct universal_inserter<Container, std::enable_if_t<names_unary_push_back_v<Container>>> {
+    constexpr std::back_insert_iterator<Container> operator()(Container& c) {
+        return std::back_insert_iterator<Container>(c);
+    }
+};
 
-/* No push_back but has push_front */
+/* Container has no push_back but has push_front, use std::front_insert_iterator */
 template <typename Container>
-struct insert_iterator<Container, std::enable_if_t<
-    !names_unary_push_back_v<Container> &&
-     names_unary_push_front_v<Container>
->>
-    : type_is<std::front_insert_iterator<Container>> { };
+struct universal_inserter<Container, std::enable_if_t<!names_unary_push_back_v<Container> &&
+                                                       names_unary_push_front_v<Container>>> {
+    constexpr std::front_insert_iterator<Container> operator()(Container& c) {
+        return std::front_insert_iterator<Container>(c);
+    }
+};
 
-/* No push_back, no push_front but has unary insert */
+/* Container has neither push_back nor push_front but does have unary insert, use
+ * ordered_insert_iterator */
 template <typename Container>
-struct insert_iterator<Container, std::enable_if_t<
-    !names_unary_push_back_v<Container> &&
-    !names_unary_push_front_v<Container> &&
-     names_unary_insert_v<Container>
->>
-    : type_is<ordered_insert_iterator<Container>> { };
-
-template <typename Container>
-using insert_iterator_t = typename insert_iterator<Container>::type;
+struct universal_inserter<Container, std::enable_if_t<!names_unary_push_back_v<Container> &&
+                                                       !names_unary_push_front_v<Container> &&
+                                                        names_unary_insert_v<Container>>> {
+    constexpr ordered_insert_iterator<Container> operator()(Container& c) {
+        return ordered_insert_iterator<Container>(c);
+    }
+};
 
 /* Class template invoking std::transform. Arguments are determined
  * by template parameters.
@@ -1005,7 +964,7 @@ struct invoke_transform {
     /* src != dst, invoke transform on src and store in dst */
     constexpr void operator()(SrcContainer& src, DstContainer& dst, F const& f) const {
         std::transform(std::begin(src), std::end(src),
-                       insert_iterator_t<DstContainer>(dst),
+                       universal_inserter<DstContainer>{}(dst),
                        f);
     };
 
@@ -1026,7 +985,7 @@ struct invoke_transform<SrcContainer, DstContainer, F, FRet, true, false> {
      * f to the mapped slot. The key will be the same as in src */
     constexpr void operator()(SrcContainer& src, DstContainer& dst, F const& f) const {
         std::transform(std::begin(src), std::end(src),
-                       insert_iterator_t<DstContainer>(dst),
+                       universal_inserter<DstContainer>{}(dst),
                        [&f](auto&& pair) {
             auto const key = pair.first;
             return std::make_pair(key, std::invoke(f, std::forward<decltype(pair)>(pair)));
