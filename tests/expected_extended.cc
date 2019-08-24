@@ -357,8 +357,17 @@ TEST_CASE("map_range works for associative container with non-pair type", "[expe
 TEST_CASE("map_range works for std::string", "[expected][extended][map_range][std::string]") {
     std::string str = "expected";
     expected<std::string, int> e1(std::move(str));
-    auto e2 = e1.map_range(::toupper);
+    auto e2 = e1.map_range([](unsigned char c) { return std::toupper(c); } );
     REQUIRE(*e2 == "EXPECTED");
+}
+
+TEST_CASE("map_range works for std::basic_string with non-char type", "[expected][extended][map_range]") {
+    std::basic_string<bool> s1{false, false, true};
+    std::basic_string<bool> s2{true, true, false};
+    expected<std::basic_string<bool>, int> e1(std::move(s1));
+
+    auto e2 = e1.map_range([](bool b) { return !b; });
+    REQUIRE(*e2 == s2);
 }
 
 TEST_CASE("map_or_else invokes callables correctly", "[expected][extended][map_or_else]") {
