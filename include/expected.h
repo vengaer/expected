@@ -297,6 +297,7 @@ class bad_expected_access : public bad_expected_access<void> {
 #include <cstddef>
 #include <functional>
 #include <iterator>
+#include <string>
 #endif
 
 #ifdef VIEN_EXPECTED_EXTENDED
@@ -865,6 +866,11 @@ struct rebind<Container<K, M, Args...>, T, true>
 {
     static_assert(!std::is_void_v<T>, "Cannot bind mapped_type to void");
 };
+
+/* Don't rebind strings */
+template <typename T>
+struct rebind<std::string, T, false>
+    : type_is<std::string> { };
 
 template <typename C, typename T>
 using rebind_t = typename rebind<C,T>::type;
