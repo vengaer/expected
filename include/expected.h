@@ -705,6 +705,21 @@ struct is_hash<H<T>,
 template <typename T>
 inline bool constexpr is_hash_v = is_hash<T>::value;
 
+template <typename, typename = void>
+struct is_char_traits : std::false_type { };
+
+/* T is char traits if it names the 5 char trait aliases */
+template <typename T>
+struct is_char_traits<T, std::void_t<typename T::char_type,
+                                    typename T::int_type,
+                                    typename T::off_type,
+                                    typename T::pos_type,
+                                    typename T::state_type>>
+    : std::true_type { };
+
+template <typename T>
+inline bool constexpr is_char_traits_v = is_char_traits<T>::value;
+
 /* Check whether a container is associative */
 template <typename, typename = void>
 struct is_associative : std::false_type { };
@@ -726,6 +741,37 @@ struct is_pair<std::pair<K,M>> : std::true_type { };
 
 template <typename T>
 inline bool constexpr is_pair_v = is_pair<T>::value;
+template <typename T, typename... P0toN>
+struct is_one_of : std::bool_constant<(std::is_same_v<T, P0toN> || ...)> { };
+
+template <typename T, typename... P0toN>
+inline bool constexpr is_one_of_v = is_one_of<T, P0toN...>::value;
+
+template <typename, typename = void>
+struct is_char_type : std::false_type { };
+
+template <typename T>
+struct is_char_type<T, std::enable_if_t<
+    is_one_of_v<remove_cvref_t<T>, char, wchar_t, char16_t, char32_t>
+>> : std::true_type { };
+
+template <typename T>
+inline bool constexpr is_char_type_v = is_char_type<T>::value;
+
+template <typename, typename = void>
+struct is_char_string : std::false_type { };
+
+/* char string if T names a traits_type and its value_type is a char type */
+template <typename T>
+struct is_char_string<T,
+    std::void_t<typename T::traits_type,
+        std::enable_if_t<is_char_type_v<typename T::value_type>>
+    >>
+    : std::true_type { };
+
+
+template <typename T>
+inline bool constexpr is_char_string_v = is_char_string<T>::value;
 
 /* Get value_type of T, if available. Otherwise, return T */
 template <typename T, typename = void>
@@ -783,10 +829,21 @@ struct rebind_if_hash<H, T, std::enable_if_t<is_hash_v<H>>>
 template <typename C, typename T>
 using rebind_if_hash_t = typename rebind_if_hash<C,T>::type;
 
+template <typename CT, typename, typename = void>
+struct rebind_if_char_traits : type_is<CT> { };
+
+template <typename CT, typename T>
+struct rebind_if_char_traits<CT, T, std::enable_if_t<is_char_traits_v<CT>>>
+    :type_is<rebind_unary_template_t<CT,T>> { };
+
+template <typename CT, typename T>
+using rebind_if_char_traits_t = typename rebind_if_char_traits<CT,T>::type;
+
 /* Rebind container value_type, allocator_type, compare and
  * hasher typedefs */
 template <typename Container, typename,
-          bool = is_associative_v<Container>>
+          bool = is_associative_v<Container>,
+          bool = is_char_string_v<Container>>
 struct rebind;
 
 /* Container is a non-associative template,
@@ -797,13 +854,15 @@ struct rebind;
 template <template <typename, typename...> class Container,
           typename F, typename T,
           typename... Args>
-struct rebind<Container<F, Args...>, T, false>
+struct rebind<Container<F, Args...>, T, false, false>
     : type_is<
         Container<T,
-            rebind_if_hash_t<
-                rebind_if_comparator_t<
-                    rebind_if_alloc_t<Args, T>,
-                 T>,
+            rebind_if_char_traits_t<
+                rebind_if_hash_t<
+                    rebind_if_comparator_t<
+                        rebind_if_alloc_t<Args, T>,
+                     T>,
+                T>,
             T>
         ...>
       >
@@ -814,7 +873,7 @@ struct rebind<Container<F, Args...>, T, false>
 /* Container is a standard array, rebind value_type from F to T
  * (size remains the same) */
 template <typename F, std::size_t N, typename T>
-struct rebind<std::array<F,N>, T, false>
+struct rebind<std::array<F,N>, T, false, false>
     : type_is<std::array<T,N>> {
     static_assert(!std::is_void_v<T>, "Cannot bind value_type to void");
 };
@@ -829,7 +888,7 @@ template <template <typename, typename, typename...> class Container,
           typename K1, typename M1,
           typename K2, typename M2,
           typename... Args>
-struct rebind<Container<K1, M1, Args...>, std::pair<K2, M2>, true>
+struct rebind<Container<K1, M1, Args...>, std::pair<K2, M2>, true, false>
     : type_is<
         Container<std::remove_cv_t<K2>, M2,
             rebind_if_hash_t<
@@ -853,7 +912,7 @@ struct rebind<Container<K1, M1, Args...>, std::pair<K2, M2>, true>
 template <template <typename, typename, typename...> class Container,
           typename K, typename M, typename T,
           typename... Args>
-struct rebind<Container<K, M, Args...>, T, true>
+struct rebind<Container<K, M, Args...>, T, true, false>
     : type_is<
         Container<std::remove_cv_t<K>, T,
             rebind_if_hash_t<
@@ -867,10 +926,12 @@ struct rebind<Container<K, M, Args...>, T, true>
     static_assert(!std::is_void_v<T>, "Cannot bind mapped_type to void");
 };
 
-/* Don't rebind strings */
-template <typename T>
-struct rebind<std::string, T, false>
-    : type_is<std::string> { };
+/* Don't rebind char strings (doing so would cause issues with
+ * string manipulation functions that don't return chars, e.g.
+ * std::toupper) */
+template <typename String, typename T, bool B>
+struct rebind<String, T, B, true>
+    : type_is<String> { };
 
 template <typename C, typename T>
 using rebind_t = typename rebind<C,T>::type;
