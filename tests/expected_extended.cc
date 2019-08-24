@@ -354,6 +354,13 @@ TEST_CASE("map_range works for associative container with non-pair type", "[expe
     REQUIRE(e2 == m2);
 }
 
+TEST_CASE("map_range works for std::string", "[expected][extended][map_range][std::string]") {
+    std::string str = "expected";
+    expected<std::string, int> e1(std::move(str));
+    auto e2 = e1.map_range(::toupper);
+    REQUIRE(*e2 == "EXPECTED");
+}
+
 TEST_CASE("map_or_else invokes callables correctly", "[expected][extended][map_or_else]") {
     expected<int, std::string> e1(unexpect, "12");
     expected<int, std::string> e2(10);
