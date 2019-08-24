@@ -862,6 +862,16 @@ struct names_unary_insert<T,
     std::void_t<decltype(std::declval<T>().insert(std::declval<typename T::value_type>()))>>
     : std::true_type { };
 
+template <typename, typename = void>
+struct supports_preallocation : std::false_type { };
+
+template <typename T>
+struct supports_preallocation<T, std::void_t<decltype(std::declval<T>().reserve(std::declval<std::size_t>()))>>
+    : std::true_type { };
+
+template <typename T>
+inline bool constexpr supports_preallocation_v = supports_preallocation<T>::value;
+
 template <typename T>
 inline bool constexpr names_unary_insert_v = names_unary_insert<T>::value;
 /* Output iterator for types whose only means
@@ -2544,6 +2554,9 @@ expected<T,E>::map_range(F&& f) & {
         return result_t(unexpect, this->error());
 
     container_t tmp;
+    if constexpr(expected_detail::supports_preallocation_v<container_t>)
+        tmp.reserve((**this).size());
+
     expected_detail::invoke_transform<T, container_t, F, invoke_t>
         {}(**this, tmp, std::forward<F>(f));
 
@@ -2565,6 +2578,9 @@ expected<T,E>::map_range(F&& f) const & {
         return result_t(unexpect, this->error());
 
     container_t tmp;
+    if constexpr(expected_detail::supports_preallocation_v<container_t>)
+        tmp.reserve((**this).size());
+
     expected_detail::invoke_transform<T, container_t, F, invoke_t>
         {}(**this, tmp, std::forward<F>(f));
 
@@ -2596,6 +2612,9 @@ expected<T,E>::map_range(F&& f) && {
     /* T and container_t are not the same, must create new container */
     else {
         container_t tmp;
+        if constexpr(expected_detail::supports_preallocation_v<container_t>)
+            tmp.reserve((**this).size());
+
         expected_detail::invoke_transform<T, container_t, F, invoke_t>
             {}(**this, tmp, std::forward<F>(f));
 
@@ -2625,6 +2644,9 @@ expected<T,E>::map_range(F&& f) const && {
     }
     else {
         container_t tmp;
+        if constexpr(expected_detail::supports_preallocation_v<container_t>)
+            tmp.reserve((**this).size());
+
         expected_detail::invoke_transform<T, container_t, F, invoke_t>
             {}(**this, tmp, std::forward<F>(f));
 
