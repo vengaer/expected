@@ -557,6 +557,7 @@ template <typename T, typename E>
 inline bool constexpr expected_enable_swap_v = expected_enable_swap<T,E>::value;
 
 #ifdef VIEN_EXPECTED_EXTENDED
+inline constexpr in_place_t in_place{};
 
 template <typename T>
 struct type_is {
@@ -809,7 +810,7 @@ using rebind_t = typename rebind<C,T>::type;
 
 /* Convenience meta function for invoking rebind. Calls rebind_t
  * with T and decayed return type of invoking an instance of F with
- * and instance of T */
+ * an instance of T */
 template <typename T, typename F>
 struct rebind_container
     : type_is<rebind_t<T,
@@ -961,49 +962,53 @@ struct universal_inserter<Container, std::enable_if_t<!names_unary_push_back_v<C
     }
 };
 
-/* Class template invoking std::transform. Arguments are determined
- * by template parameters.
- * The primary template handles the cases when:
- * - The container is not associative
- * - The container is associative and the type FRet of the value returned from
- *      callable F is an std::pair */
+/* Convert instance of SrcContainer to DstContainer */
 template <typename SrcContainer, typename DstContainer, typename F, typename FRet,
           bool = is_associative_v<SrcContainer>,
           bool = is_pair_v<FRet>>
-struct invoke_transform {
-    /* src != dst, invoke transform on src and store in dst */
-    constexpr void operator()(SrcContainer& src, DstContainer& dst, F const& f) const {
+struct convert {
+    /* Use when std::is_same_v<SrcContainer, DstContainer> is false */
+    constexpr DstContainer operator()(SrcContainer& src, F const& f) const {
+        DstContainer dst;
+        if constexpr(supports_preallocation_v<DstContainer>)
+            dst.reserve(src.size());
+
         std::transform(std::begin(src), std::end(src),
                        universal_inserter<DstContainer>{}(dst),
                        f);
+        return dst;
     };
 
-    constexpr void operator()(SrcContainer& src, F const& f) const {
+    /* Use in rvalue overload when std::is_same_v<SrcContainer, DstContainer> is true */
+    constexpr void operator()(in_place_t, SrcContainer& src, F const& f) const {
         std::transform(std::begin(src), std::end(src),
                        std::begin(src), f);
     };
 };
 
-/* Partial specialization for when the container is associative and the type FRet
- * of the value returned from callable F is not an std::pair. This maps the
- * value returned from f to the mapped slot in the pair. */
+/* Partial specialization for when the containers are associative but the return
+ * type of callable F is not a pair. Map the return type to the mapped_type in the
+ * associative container */
 template <typename SrcContainer, typename DstContainer, typename F, typename FRet>
-struct invoke_transform<SrcContainer, DstContainer, F, FRet, true, false> {
+struct convert<SrcContainer, DstContainer, F, FRet, true, false> {
+    /* Use when std::is_same_v<SrcContainer, DstContainer> == false */
+    constexpr DstContainer operator()(SrcContainer& src, F const& f) const {
+        DstContainer dst;
+        if constexpr(supports_preallocation_v<DstContainer>)
+            dst.reserve(src.size());
 
-    /* src != dst (may also differ in type). Invoke transform on src and store
-     * in dst. Invoke callable f in a lambda that maps the value returned from
-     * f to the mapped slot. The key will be the same as in src */
-    constexpr void operator()(SrcContainer& src, DstContainer& dst, F const& f) const {
         std::transform(std::begin(src), std::end(src),
                        universal_inserter<DstContainer>{}(dst),
                        [&f](auto&& pair) {
             auto const key = pair.first;
             return std::make_pair(key, std::invoke(f, std::forward<decltype(pair)>(pair)));
         });
+
+        return dst;
     };
 
-    /* Invoke transform on src and overwrite its content */
-    constexpr void operator()(SrcContainer& src, F const& f) const {
+    /* Use in rvalue overload when std::is_same_v<SrcContainer, DstContainer> is true */
+    constexpr void operator()(in_place_t, SrcContainer& src, F const& f) const {
         std::transform(std::begin(src), std::end(src),
                        std::begin(src),
                        [&f](auto&& pair) {
@@ -1011,6 +1016,28 @@ struct invoke_transform<SrcContainer, DstContainer, F, FRet, true, false> {
             return std::make_pair(key, std::invoke(f, std::forward<decltype(pair)>(pair)));
         });
     };
+};
+
+/* Partial specialization for when SrcContainer and DstContainer are standard arrays.
+ * Must be handled separately to support non-default constructible types */
+template <typename T1, typename T2, std::size_t N, typename F, typename FRet, bool B>
+struct convert<std::array<T1,N>, std::array<T2,N>, F, FRet, false, B> {
+    /* Use when std::is_same_v<T1,T2> == false */
+    constexpr std::array<T2,N> operator()(std::array<T1,N>& src, F const& f) const {
+        return construct(src, f, std::make_index_sequence<N>{});
+    }
+
+    /* Use in rvalue overload when std::is_same_v<T1,T2> == true */
+    constexpr void operator()(in_place_t, std::array<T1,N>& src, F const& f) const {
+        std::transform(std::begin(src), std::end(src),
+                       std::begin(src), f);
+    }
+
+    /* Create the dst array by invoking f. This avoids default constructing the elements */
+    template <std::size_t... Is>
+    static constexpr std::array<T2,N> construct(std::array<T1,N> const& src, F const& f, std::index_sequence<Is...>) {
+        return {std::invoke(f, src[Is])...};
+    }
 };
 
 #endif
@@ -2553,14 +2580,8 @@ expected<T,E>::map_range(F&& f) & {
     if(!bool(*this))
         return result_t(unexpect, this->error());
 
-    container_t tmp;
-    if constexpr(expected_detail::supports_preallocation_v<container_t>)
-        tmp.reserve((**this).size());
-
-    expected_detail::invoke_transform<T, container_t, F, invoke_t>
-        {}(**this, tmp, std::forward<F>(f));
-
-    return result_t(std::move(tmp));
+    return result_t(expected_detail::convert<T, container_t, F, invoke_t>
+                        {}(**this, std::forward<F>(f)));
 }
 
 template <typename T, typename E>
@@ -2577,14 +2598,8 @@ expected<T,E>::map_range(F&& f) const & {
     if(!bool(*this))
         return result_t(unexpect, this->error());
 
-    container_t tmp;
-    if constexpr(expected_detail::supports_preallocation_v<container_t>)
-        tmp.reserve((**this).size());
-
-    expected_detail::invoke_transform<T, container_t, F, invoke_t>
-        {}(**this, tmp, std::forward<F>(f));
-
-    return result_t(std::move(tmp));
+    return result_t(expected_detail::convert<T, container_t, F, invoke_t>
+                        {}(**this, std::forward<F>(f)));
 }
 
 template <typename T, typename E>
@@ -2604,21 +2619,13 @@ expected<T,E>::map_range(F&& f) && {
     /* T and container_t are the same, transform **this and move
      * **this to new instance */
     if constexpr(std::is_same_v<T, container_t>) {
-        expected_detail::invoke_transform<T, container_t, F, invoke_t>
-            {}(**this, std::forward<F>(f));
-
-        return result_t(std::move(**this));
+        return result_t(expected_detail::convert<T, container_t, F, invoke_t>
+                            {}(expected_detail::in_place, **this, std::forward<F>(f)));
     }
     /* T and container_t are not the same, must create new container */
     else {
-        container_t tmp;
-        if constexpr(expected_detail::supports_preallocation_v<container_t>)
-            tmp.reserve((**this).size());
-
-        expected_detail::invoke_transform<T, container_t, F, invoke_t>
-            {}(**this, tmp, std::forward<F>(f));
-
-        return result_t(std::move(tmp));
+        return result_t(expected_detail::convert<T, container_t, F, invoke_t>
+                            {}(**this, std::forward<F>(f)));
     }
 }
 
@@ -2637,20 +2644,12 @@ expected<T,E>::map_range(F&& f) const && {
         return result_t(unexpect, std::move(this->error()));
 
     if constexpr(std::is_same_v<T, container_t>) {
-        expected_detail::invoke_transform<T, container_t, F, invoke_t>
-            {}(**this, std::forward<F>(f));
-
-        return result_t(std::move(**this));
+        return result_t(expected_detail::convert<T, container_t, F, invoke_t>
+                            {}(expected_detail::in_place, **this, std::forward<F>(f)));
     }
     else {
-        container_t tmp;
-        if constexpr(expected_detail::supports_preallocation_v<container_t>)
-            tmp.reserve((**this).size());
-
-        expected_detail::invoke_transform<T, container_t, F, invoke_t>
-            {}(**this, tmp, std::forward<F>(f));
-
-        return result_t(std::move(tmp));
+        return result_t(expected_detail::convert<T, container_t, F, invoke_t>
+                            {}(**this, std::forward<F>(f)));
     }
 }
 
