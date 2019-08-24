@@ -226,6 +226,35 @@ TEST_CASE("map_range works for standard array", "[expected][extended][map_range]
     REQUIRE(e2 == ai);
 }
 
+TEST_CASE("map_range works for standard array with non-default constructible value_type", "[expected][extended][map_range][array]") {
+    struct non_default_t {
+        non_default_t(int j) : i{j} { };
+        non_default_t(non_default_t const& other) : i{other.i} { }
+        non_default_t& operator=(non_default_t const& other) {
+            i = other.i;
+            return *this;
+        }
+
+        bool operator==(non_default_t const& other) const {
+            return i == other.i;
+        }
+
+        int i;
+    };
+
+    std::array<int, 5> ai{1,2,3,4,5};
+    std::array<non_default_t, 5> an{1,2,3,4,5};
+
+    expected<std::array<int,5>, int> e1{std::move(ai)};
+
+    auto e2 = e1.map_range([](int i) {
+        return non_default_t(i);
+    });
+
+    REQUIRE(bool(e2));
+    REQUIRE(e2 == an);
+}
+
 TEST_CASE("map_range works for insert-only container", "[expected][extended][map_range][insert]") {
     std::set<int> si{1,2};
     std::set<std::string> ss{"1","2", "4"};
@@ -336,7 +365,7 @@ TEST_CASE("map_or_else invokes callables correctly", "[expected][extended][map_o
 }
 
 TEMPLATE_TEST_CASE("or_else invokes returns correct value", "[expected][extended][or_else]", void, std::string) {
-    
+
     expected<TestType, int> e1(unexpect, 10);
     expected<TestType, int> e2{};
     if constexpr(std::is_same_v<std::string, TestType>)
