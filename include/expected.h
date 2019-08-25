@@ -3633,6 +3633,6 @@ template <typename E1,
 void swap(vien::unexpected<E1>& x, vien::unexpected<E1>& y) noexcept(noexcept(x.swap(y))) {
     x.swap(y);
 }
-}
+} /* namespace std */
 
 #endif
