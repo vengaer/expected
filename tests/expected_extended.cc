@@ -10,8 +10,8 @@
 #include <set>
 #include <string>
 #include <type_traits>
-#include <unordered_set>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 using namespace vien;
@@ -229,11 +229,8 @@ TEST_CASE("map_range works for standard array", "[expected][extended][map_range]
 TEST_CASE("map_range works for standard array with non-default constructible value_type", "[expected][extended][map_range][array]") {
     struct non_default_t {
         non_default_t(int j) : i{j} { };
-        non_default_t(non_default_t const& other) : i{other.i} { }
-        non_default_t& operator=(non_default_t const& other) {
-            i = other.i;
-            return *this;
-        }
+        non_default_t(non_default_t const& other) = default;
+        non_default_t& operator=(non_default_t const& other) = default;
 
         bool operator==(non_default_t const& other) const {
             return i == other.i;
