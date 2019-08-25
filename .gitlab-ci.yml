@@ -12,7 +12,7 @@ gcc:
     stage: build
     script:
     - export CXX=g++
-    - make
+    - make -j$(nproc)
     artifacts:
         paths:
         - expected_test
@@ -21,7 +21,7 @@ clang:
     stage: build
     script:
     - export CXX=clang++
-    - make
+    - make -j$(nproc)
     - ci/verify
 
 unit_tests:
