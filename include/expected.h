@@ -297,7 +297,6 @@ class bad_expected_access : public bad_expected_access<void> {
 #include <cstddef>
 #include <functional>
 #include <iterator>
-#include <string>
 #endif
 
 #ifdef VIEN_EXPECTED_EXTENDED
