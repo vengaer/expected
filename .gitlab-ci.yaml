@@ -1,4 +1,4 @@
-image: base/archlinux:2019.07.01
+image: base/archlinux:2018.09.01
 
 variables:
     CC: clang
