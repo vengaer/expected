@@ -1,18 +1,30 @@
-image: base/archlinux:2018.09.01
-
-variables:
-    CC: clang
-    CXX: clang++
+image: archlinux/base:latest
 
 before_script:
-    - pacman -Syu 
-    - pacman -S clang
-    - clang --version
+    - pacman --noconfirm -Syu
+    - pacman --noconfirm -S gcc clang make
 
-compile:
+stages:
+    - build
+    - test
+
+gcc:
+    stage: build
     script:
+    - export CXX=g++
     - make
-    - ci/verify
     artifacts:
         paths:
         - expected_test
+
+clang:
+    stage: build
+    script:
+    - export CXX=clang++
+    - make
+    - ci/verify
+
+unit_tests:
+    stage: test
+    script:
+    - ci/verify

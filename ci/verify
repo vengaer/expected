@@ -2,11 +2,10 @@
 
 bin="expected_test"
 output=./$bin
+retval=$?
 
-if [ $? -eq 0 ] ; then
-    echo "Return value ok"
-else
-    echo "Return value != 0"
+echo "Process returned "$retval
+if (( $retval != 0 )) ; then
     exit 1
 fi
 
