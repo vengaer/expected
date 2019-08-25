@@ -2,7 +2,7 @@ image: archlinux/base:latest
 
 before_script:
     - pacman --noconfirm -Syu
-    - pacman --noconfirm -S gcc clang make
+    - pacman --noconfirm -S grep gcc clang make
 
 stages:
     - build
