@@ -13,7 +13,7 @@ CXXFLAGS := $(CXXFLAGS) -std=c++17 -Wall -Wextra -pedantic -Weffc++ -Wshadow -Wu
 $(BIN): $(OBJ)
 	$(CXX) -o $@ $^ $(CXXFLAGS)
 
-.PHONY: clean run manual
+.PHONY: clean run manual lint
 
 clean:
 	rm -f $(OBJ) $(BIN)
@@ -23,3 +23,6 @@ run: $(BIN)
 
 manual: CPPFLAGS+=-D EXPECTED_MANUAL_TEST
 manual: $(BIN)
+
+lint:
+	clang-tidy tests/main.cc -header-filter=.* -extra-arg=-std=c++17 -- $(INC) -D EXPECTED_MANUAL_TEST
