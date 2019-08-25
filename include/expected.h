@@ -3564,7 +3564,7 @@ constexpr bool operator!=(unexpected<E1> const& x, unexpected<E2> const& y) {
 template <>
 class bad_expected_access<void> : public std::exception {
     public:
-        explicit bad_expected_access() { };
+        explicit bad_expected_access() = default;
 };
 
 template <typename E>
