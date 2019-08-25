@@ -2,7 +2,7 @@
 
 C++17 implementation of `std::expected` conforming to the interface proposed in [P0323R9](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0323r9.html).  
 
-The current standard is somewhat limiting when it comes to error handling. We are forced to either juggle error codes (efficient but messy) or rely on exceptions (expressive but inefficient). Languages such as [Haskell](https://www.haskell.org) and [Rust](https://www.rust-lang.org) have instead chosen to use monadic error handling. This way, functions that may fail can return an instance of one of two types, one being of the 'correct' return type and one being of an error type. `std::expected` is an attempt to bring this approach to C++. This would allow for the expressiveness of exceptions but with a significantly smaller performance hit (a single boolean check is enough), while also making the code more concise.
+The current standard is somewhat limiting when it comes to error handling. We are forced to either juggle error codes (efficient but messy) or rely on exceptions (expressive but inefficient). Languages such as [Haskell](https://www.haskell.org) and [Rust](https://www.rust-lang.org) have instead chosen to use monadic error handling. This way, functions that may fail can return an instance of one of two types, one being of the 'correct' return type and one being of an error type. `std::expected` is this approach brought to C++. This would allow for the expressiveness of exceptions but with a significantly smaller performance hit (a single boolean check is enough), while also making the code more concise.
 
 Using `expected`, one might replace the following
 ```cpp
@@ -17,6 +17,7 @@ void foo() {
     catch(std::exception& e) {
         std::cerr << e.what() << "\n";
         /* Additional error handling */
+        return;
     }
     /* Do something with vec */
 }
@@ -29,16 +30,18 @@ extern vien::expected<std::vector<int>, std::string> function_that_may_fail();
 void foo() {
     auto e = function_that_may_fail();
 
-    if(!e.has_value()) {
+    if(e.has_value()) {
+        /* Do something with e.value() */
+    }
+    else {
         std::cerr << e.error() << "\n";
         /* Additional error handling */
     }
-    /* Do something with e.value() */
 }
 ```
 
 ### Opt-in extensions
-In addition to what is proposed in P0323R9, the implementation provides a few functional extensions, in part inspired by Rust's [Result enum](https://doc.rust-lang.org/std/result/enum.Result.html). In order to adhere to the interface proposed for the standard, these are opt-in and require that `VIEN_EXPECTED_EXTENDED` is defined before the expected header is included. The following extensions are available:
+In addition to what is proposed in P0323R9, the implementation provides a few functional extensions, inspired in part by Rust's [Result enum](https://doc.rust-lang.org/std/result/enum.Result.html). In order to adhere to the interface proposed for the standard, these are opt-in and require that `VIEN_EXPECTED_EXTENDED` is defined before the expected header is included. The following extensions are available:
 
 - `map` invokes a callable on the contained value, leaving a potential unexpected unchanged.
     ```cpp
@@ -94,8 +97,7 @@ In addition to what is proposed in P0323R9, the implementation provides a few fu
     ```
 
 ### Dependencies
-Uses [Catch2](https://github.com/catchorg/Catch2) for the testing. The single-header version is included in the tests directory.
+[Catch2](https://github.com/catchorg/Catch2) is used for testing. The single-header version is included in the tests directory.
 
 ### Acknowledgements
-Simon Brand has written what, from what I have seen, is a [more sophisticated implementation](https://github.com/TartanLlama/expected) with support ranging back to C++11
-
+Simon Brand has written a [very well received implementation](https://github.com/TartanLlama/expected) with support ranging back to C++11.
