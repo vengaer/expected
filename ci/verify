@@ -1,0 +1,18 @@
+#!/bin/bash
+
+bin="expected_test"
+output=./$bin
+
+if [ $? -eq 0 ] ; then
+    echo "Return value ok"
+else
+    echo "Return value != 0"
+    exit 1
+fi
+
+if ! $output | grep -q "All tests passed" ; then
+    echo "Tests failed"
+    exit 1
+else
+    echo "All tests passed"
+fi

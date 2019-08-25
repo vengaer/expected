@@ -1,0 +1,18 @@
+image: base/archlinux:2019.07.01
+
+variables:
+    CC: clang
+    CXX: clang++
+
+before_script:
+    - pacman -Syu 
+    - pacman -S clang
+    - clang --version
+
+compile:
+    script:
+    - make
+    - ci/verify
+    artifacts:
+        paths:
+        - expected_test
