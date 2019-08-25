@@ -13,7 +13,7 @@ CXXFLAGS := $(CXXFLAGS) -std=c++17 -Wall -Wextra -pedantic -Weffc++ -Wshadow -Wu
 $(BIN): $(OBJ)
 	$(CXX) -o $@ $^ $(CXXFLAGS)
 
-.PHONY: clean run manual lint
+.PHONY: clean run manual lint static_check
 
 clean:
 	rm -f $(OBJ) $(BIN)
@@ -26,3 +26,6 @@ manual: $(BIN)
 
 lint:
 	clang-tidy tests/main.cc -header-filter=.* -extra-arg=-std=c++17 -- $(INC) -D EXPECTED_MANUAL_TEST
+
+static_check:
+	cppcheck --enable=all --inconclusive --language=c++ include/expected.h
