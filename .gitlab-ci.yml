@@ -22,7 +22,6 @@ clang:
     script:
     - export CXX=clang++
     - make -j$(nproc)
-    - ci/verify
 
 unit_tests:
     stage: test
