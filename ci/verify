@@ -1,17 +1,20 @@
 #!/bin/bash
 
-bin="expected_test"
-output=./$bin
+output="$(./expected_test)"
 retval=$?
 
-echo "Process returned "$retval
-if (( $retval != 0 )) ; then
-    exit 1
+exit_code=0
+
+if ! echo "$output" | grep -q 'All tests passed'; then
+    printf "Tests failed:\n%s\n\n" "$output"
+    exit_code=1
+else
+    printf "%s\n\n" "$output"
 fi
 
-if ! $output | grep -q "All tests passed" ; then
-    echo "Tests failed"
-    exit 1
-else
-    echo "All tests passed"
+printf "Process returned %s\n" "$retval"
+if (( $retval != 0 )) ; then
+    exit_code=1
 fi
+
+exit $exit_code
