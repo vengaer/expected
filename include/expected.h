@@ -3388,6 +3388,60 @@ constexpr expected<void,E> expected<void,E>::or_else(F&& f) const && {
 #endif
 
 template <typename E>
+class expected<void const, E> : public expected<void, E> {
+    public:
+        using value_type = void const;
+        using error_type = E;
+        using unexpected_type = unexpected<E>;
+
+        template <typename U>
+        using rebind = expected<U, error_type>;
+
+        using expected<void,E>::expected;
+        expected() = default;
+        expected(expected const&) = default;
+        expected(expected&&) = default;
+        expected& operator=(expected const&) = default;
+        expected& operator=(expected&&) = default;
+};
+
+template <typename E>
+class expected<void volatile, E> : public expected<void, E> {
+    public:
+        using value_type = void const;
+        using error_type = E;
+        using unexpected_type = unexpected<E>;
+
+        template <typename U>
+        using rebind = expected<U, error_type>;
+
+        using expected<void,E>::expected;
+        expected() = default;
+        expected(expected const&) = default;
+        expected(expected&&) = default;
+        expected& operator=(expected const&) = default;
+        expected& operator=(expected&&) = default;
+};
+
+template <typename E>
+class expected<void const volatile, E> : public expected<void, E> {
+    public:
+        using value_type = void const;
+        using error_type = E;
+        using unexpected_type = unexpected<E>;
+
+        template <typename U>
+        using rebind = expected<U, error_type>;
+
+        using expected<void,E>::expected;
+        expected() = default;
+        expected(expected const&) = default;
+        expected(expected&&) = default;
+        expected& operator=(expected const&) = default;
+        expected& operator=(expected&&) = default;
+};
+
+template <typename E>
 class unexpected {
     static_assert(!std::is_same_v<E, void>, "E cannot be void");
     public:
