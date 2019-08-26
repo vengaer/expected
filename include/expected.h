@@ -1764,20 +1764,20 @@ class expected_interface_base : expected_move_assign_base<T,E> {
         template <typename G = E, typename EE = E,
                   typename = std::enable_if_t<std::is_constructible_v<E, G const&>>,
                   typename = std::enable_if_t<std::is_convertible_v<G const&, E>>>
-        constexpr expected_interface_base(unexpected<G> const&);
+        constexpr expected_interface_base(unexpected<G> const& e);
 
         template <typename G = E, typename EE = E,
                   typename = std::enable_if_t<
                       std::is_constructible_v<E, G const&> &&
                      !std::is_convertible_v<G const&, E>
                   >>
-        constexpr explicit expected_interface_base(unexpected<G> const&);
+        constexpr explicit expected_interface_base(unexpected<G> const& e);
 
         /* Conditionally explicit unexpected rvalue ctor */
         template <typename G = E, typename EE = E,
                   typename = std::enable_if_t<std::is_constructible_v<E, G&&>>,
                   typename = std::enable_if_t<std::is_convertible_v<G&&, E>>>
-        constexpr expected_interface_base(unexpected<G>&&)
+        constexpr expected_interface_base(unexpected<G>&& e)
                         noexcept(std::is_nothrow_constructible_v<E, G&&>);
 
         template <typename G = E, typename EE = E,
@@ -1785,35 +1785,35 @@ class expected_interface_base : expected_move_assign_base<T,E> {
                       std::is_constructible_v<E, G&&> &&
                      !std::is_convertible_v<G&&, E>
                   >>
-        constexpr explicit expected_interface_base(unexpected<G>&&)
+        constexpr explicit expected_interface_base(unexpected<G>&& e)
                         noexcept(std::is_nothrow_constructible_v<E, G&&>);
 
         template <typename... Args,
                   typename = std::enable_if_t<
                       std::is_constructible_v<E, Args...>
                   >>
-        constexpr explicit expected_interface_base(unexpect_t, Args&&...);
+        constexpr explicit expected_interface_base(unexpect_t, Args&&... args);
 
         template <typename U, typename... Args,
                   typename = std::enable_if_t<
                       std::is_constructible_v<E, std::initializer_list<U>&, Args...>
                   >>
         constexpr explicit
-            expected_interface_base(unexpect_t, std::initializer_list<U>, Args&&...);
+            expected_interface_base(unexpect_t, std::initializer_list<U> il, Args&&... args);
 
         template <typename G = E, typename EE = E,
                   typename = std::enable_if_t<
                       std::is_nothrow_copy_constructible_v<EE> &&
                       std::is_copy_assignable_v<EE>
                   >>
-        expected_interface_base& operator=(unexpected<G> const&);
+        expected_interface_base& operator=(unexpected<G> const& e);
 
         template <typename G = E, typename EE = E,
                   typename = std::enable_if_t<
                       std::is_nothrow_move_constructible_v<EE> &&
                       std::is_move_assignable_v<EE>
                   >>
-        expected_interface_base& operator=(unexpected<G>&&);
+        expected_interface_base& operator=(unexpected<G>&& e);
 
         constexpr explicit operator bool() const noexcept;
         constexpr bool has_value() const noexcept;
@@ -1824,13 +1824,13 @@ class expected_interface_base : expected_move_assign_base<T,E> {
         constexpr E const&& error() const &&;
 
         template <typename T1, typename E1, typename E2>
-        friend constexpr bool operator==(expected<T1, E1> const&, unexpected<E2> const&);
+        friend constexpr bool operator==(expected<T1, E1> const& x, unexpected<E2> const& e);
         template <typename T1, typename E1, typename E2>
-        friend constexpr bool operator==(unexpected<E2> const&, expected<T1, E1> const&);
+        friend constexpr bool operator==(unexpected<E2> const& e, expected<T1, E1> const& x);
         template <typename T1, typename E1, typename E2>
-        friend constexpr bool operator!=(expected<T1, E1> const&, unexpected<E2> const&);
+        friend constexpr bool operator!=(expected<T1, E1> const& x, unexpected<E2> const& e);
         template <typename T1, typename E1, typename E2>
-        friend constexpr bool operator!=(unexpected<E2> const&, expected<T1, E1> const&);
+        friend constexpr bool operator!=(unexpected<E2> const& e, expected<T1, E1> const& x);
 
     protected:
         template <typename... Args>
@@ -2062,7 +2062,7 @@ class expected : public expected_detail::expected_interface_base<T,E> {
                       expected_detail::
                           expected_enable_implicit_forwarding_ref_ctor_v<TT, U>
                   >>
-        constexpr expected(U&&);
+        constexpr expected(U&& v);
 
         template <typename U = T, typename TT = T, typename EE = E,
                   typename = std::enable_if_t<
@@ -2071,7 +2071,7 @@ class expected : public expected_detail::expected_interface_base<T,E> {
                      !expected_detail::
                           expected_enable_implicit_forwarding_ref_ctor_v<TT, U>
                   >>
-        constexpr explicit expected(U&&);
+        constexpr explicit expected(U&& v);
 
 
         /* Conditionally explicit conversion constructors */
@@ -2119,32 +2119,32 @@ class expected : public expected_detail::expected_interface_base<T,E> {
                   typename = std::enable_if_t<
                       std::is_constructible_v<T, Args...>
                   >>
-        constexpr explicit expected(in_place_t, Args&&...);
+        constexpr explicit expected(in_place_t, Args&&... args);
 
         template <typename U, typename... Args,
                   typename = std::enable_if_t<
                       std::is_constructible_v<T, std::initializer_list<U>&, Args...>
                   >>
-        constexpr explicit expected(in_place_t, std::initializer_list<U>, Args&&...);
+        constexpr explicit expected(in_place_t, std::initializer_list<U> il, Args&&... args);
 
         template <typename U = T, typename TT = T, typename EE = E,
                   typename = std::enable_if_t<
                       expected_detail::
                           expected_enable_unary_forwarding_assign_v<TT, EE, U>
                    >>
-        expected& operator=(U&&);
+        expected& operator=(U&& v);
 
         template <typename... Args,
                   typename = std::enable_if_t<
                       std::is_nothrow_constructible_v<T, Args...>
                   >>
-        T& emplace(Args&&...);
+        T& emplace(Args&&... args);
 
         template <typename U, typename... Args,
                   typename = std::enable_if_t<
                       std::is_nothrow_constructible_v<T, std::initializer_list<U>&, Args...>
                   >>
-        T& emplace(std::initializer_list<U>&, Args&&...);
+        T& emplace(std::initializer_list<U>& il, Args&&... args);
 
         template <typename TT = T, typename EE = E,
                   typename = std::enable_if_t<
@@ -2169,108 +2169,108 @@ class expected : public expected_detail::expected_interface_base<T,E> {
         constexpr T const&& value() const &&;
 
         template <typename U>
-        constexpr T value_or(U&&) const &;
+        constexpr T value_or(U&& v) const &;
         template <typename U>
-        constexpr T value_or(U&&) &&;
+        constexpr T value_or(U&& v) &&;
 
         template <typename T1, typename E1, typename T2, typename E2>
-        friend constexpr bool operator==(expected<T1, E1> const&,
-                                         expected<T2, E2> const&);
+        friend constexpr bool operator==(expected<T1, E1> const& x,
+                                         expected<T2, E2> const& y);
 
         template <typename T1, typename E1, typename T2, typename E2>
-        friend constexpr bool operator!=(expected<T1, E1> const&,
-                                         expected<T2, E2> const&);
+        friend constexpr bool operator!=(expected<T1, E1> const& x,
+                                         expected<T2, E2> const& y);
 
         template <typename T1, typename E1, typename T2>
-        friend constexpr bool operator==(expected<T1, E1> const&, T2 const&);
+        friend constexpr bool operator==(expected<T1, E1> const& x, T2 const& v);
         template <typename T1, typename E1, typename T2>
-        friend constexpr bool operator==(T2 const&, expected<T1, E1> const&);
+        friend constexpr bool operator==(T2 const& v, expected<T1, E1> const& x);
         template <typename T1, typename E1, typename T2>
-        friend constexpr bool operator!=(expected<T1, E1> const&, T2 const&);
+        friend constexpr bool operator!=(expected<T1, E1> const& x, T2 const& v);
         template <typename T1, typename E1, typename T2>
-        friend constexpr bool operator!=(T2 const&, expected<T1, E1> const&);
+        friend constexpr bool operator!=(T2 const& v, expected<T1, E1> const& x);
 
         #ifdef VIEN_EXPECTED_EXTENDED
         template <typename F>
         constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
-            map(F&&) &;
+            map(F&& f) &;
         template <typename F>
         constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
-            map(F&&) const &;
+            map(F&& f) const &;
         template <typename F>
         constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
-            map(F&&) &&;
+            map(F&& f) &&;
         template <typename F>
         constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
-             map(F&&) const &&;
+             map(F&& f) const &&;
 
         template <typename F, typename TT = T,
                   typename = std::enable_if_t<
                       expected_detail::is_container_v<TT>
                   >>
         constexpr expected<expected_detail::rebind_container_t<T,F>, E>
-            map_range(F&&) &;
+            map_range(F&& f) &;
 
         template <typename F, typename TT = T,
                   typename = std::enable_if_t<
                       expected_detail::is_container_v<TT>
                   >>
         constexpr expected<expected_detail::rebind_container_t<T,F>, E>
-            map_range(F&&) const &;
+            map_range(F&& f) const &;
 
         template <typename F, typename TT = T,
                   typename = std::enable_if_t<
                       expected_detail::is_container_v<TT>
                   >>
         constexpr expected<expected_detail::rebind_container_t<T,F>, E>
-            map_range(F&&) &&;
+            map_range(F&& f) &&;
 
         template <typename F, typename TT = T,
                   typename = std::enable_if_t<
                       expected_detail::is_container_v<TT>
                   >>
         constexpr expected<expected_detail::rebind_container_t<T,F>, E>
-            map_range(F&&) const &&;
+            map_range(F&& f) const &&;
 
         template <typename F>
         constexpr expected<T, std::decay_t<std::invoke_result_t<F,E>>>
-            map_error(F&&) &;
+            map_error(F&& f) &;
         template <typename F>
         constexpr expected<T, std::decay_t<std::invoke_result_t<F,E>>>
-            map_error(F&&) const &;
+            map_error(F&& f) const &;
         template <typename F>
         constexpr expected<T, std::decay_t<std::invoke_result_t<F,E>>>
-            map_error(F&&) &&;
+            map_error(F&& f) &&;
         template <typename F>
         constexpr expected<T, std::decay_t<std::invoke_result_t<F,E>>>
-            map_error(F&&) const &&;
+            map_error(F&& f) const &&;
 
         template <typename M, typename F>
-        constexpr T map_or_else(M&&, F&&) &;
+        constexpr T map_or_else(M&& map, F&& fallback) &;
         template <typename M, typename F>
-        constexpr T map_or_else(M&&, F&&) const &;
+        constexpr T map_or_else(M&& map, F&& fallback) const &;
         template <typename M, typename F>
-        constexpr T map_or_else(M&&, F&&) &&;
+        constexpr T map_or_else(M&& map, F&& fallback) &&;
         template <typename M, typename F>
-        constexpr T map_or_else(M&&, F&&) const &&;
+        constexpr T map_or_else(M&& map, F&& fallback) const &&;
 
         template <typename F>
-        constexpr expected and_then(F&&) &;
+        constexpr expected and_then(F&& f) &;
         template <typename F>
-        constexpr expected and_then(F&&) const &;
+        constexpr expected and_then(F&& f) const &;
         template <typename F>
-        constexpr expected and_then(F&&) &&;
+        constexpr expected and_then(F&& f) &&;
         template <typename F>
-        constexpr expected and_then(F&&) const &&;
+        constexpr expected and_then(F&& f) const &&;
 
         template <typename F>
-        constexpr expected or_else(F&&) &;
+        constexpr expected or_else(F&& f) &;
         template <typename F>
-        constexpr expected or_else(F&&) const &;
+        constexpr expected or_else(F&& f) const &;
         template <typename F>
-        constexpr expected or_else(F&&) &&;
+        constexpr expected or_else(F&& f) &&;
         template <typename F>
-        constexpr expected or_else(F&&) const &&;
+        constexpr expected or_else(F&& f) const &&;
         #endif
 };
 
@@ -3035,48 +3035,48 @@ class expected<void, E> : public expected_detail::expected_interface_base<void,E
         constexpr void value() const;
 
         template <typename E1,typename E2>
-        friend constexpr bool operator==(expected<void, E1> const&,
-                                         expected<void, E2> const&);
+        friend constexpr bool operator==(expected<void, E1> const& x,
+                                         expected<void, E2> const& y);
 
         template <typename E1, typename E2>
-        friend constexpr bool operator!=(expected<void, E1> const&,
-                                         expected<void, E2> const&);
+        friend constexpr bool operator!=(expected<void, E1> const& x,
+                                         expected<void, E2> const& y);
 
         #ifdef VIEN_EXPECTED_EXTENDED
         template <typename F>
         constexpr expected<std::decay_t<std::invoke_result_t<F>>, E>
-            map(F&&) &;
+            map(F&& f) &;
         template <typename F>
         constexpr expected<std::decay_t<std::invoke_result_t<F>>, E>
-            map(F&&) const &;
+            map(F&& f) const &;
         template <typename F>
         constexpr expected<std::decay_t<std::invoke_result_t<F>>, E>
-            map(F&&) &&;
+            map(F&& f) &&;
         template <typename F>
         constexpr expected<std::decay_t<std::invoke_result_t<F>>, E>
-            map(F&&) const &&;
+            map(F&& f) const &&;
 
         template <typename F>
         constexpr expected<void, std::decay_t<std::invoke_result_t<F,E>>>
-            map_error(F&&) &;
+            map_error(F&& f) &;
         template <typename F>
         constexpr expected<void, std::decay_t<std::invoke_result_t<F,E>>>
-            map_error(F&&) const &;
+            map_error(F&& f) const &;
         template <typename F>
         constexpr expected<void, std::decay_t<std::invoke_result_t<F,E>>>
-            map_error(F&&) &&;
+            map_error(F&& f) &&;
         template <typename F>
         constexpr expected<void, std::decay_t<std::invoke_result_t<F,E>>>
-            map_error(F&&) const &&;
+            map_error(F&& f) const &&;
 
         template <typename F>
-        constexpr expected or_else(F&&) &;
+        constexpr expected or_else(F&& f) &;
         template <typename F>
-        constexpr expected or_else(F&&) const &;
+        constexpr expected or_else(F&& f) const &;
         template <typename F>
-        constexpr expected or_else(F&&) &&;
+        constexpr expected or_else(F&& f) &&;
         template <typename F>
-        constexpr expected or_else(F&&) const &&;
+        constexpr expected or_else(F&& f) const &&;
         #endif
 };
 
@@ -3447,16 +3447,16 @@ class unexpected {
     public:
         template <typename Err = E, typename =
                 std::enable_if_t<std::is_constructible_v<E, Err&&>>>
-        constexpr explicit unexpected(Err&&);
+        constexpr explicit unexpected(Err&& err);
 
         template <typename... Args, typename =
                 std::enable_if_t<std::is_constructible_v<E, Args...>>>
-        constexpr explicit unexpected(in_place_t, Args&&...);
+        constexpr explicit unexpected(in_place_t, Args&&... args);
 
         template <typename U, typename... Args, typename =
                 std::enable_if_t<std::is_constructible_v<
                         E, std::initializer_list<U>, Args...>>>
-        constexpr explicit unexpected(in_place_t, std::initializer_list<U>, Args&&...);
+        constexpr explicit unexpected(in_place_t, std::initializer_list<U> il, Args&&... args);
 
         constexpr unexpected(unexpected const&) = default;
         constexpr unexpected(unexpected&&) = default;
@@ -3470,13 +3470,13 @@ class unexpected {
                   typename = std::enable_if_t<
                       expected_detail::unexpected_enable_implicit_copy_conversion_v<EE, Err>
                   >>
-        constexpr unexpected(unexpected<Err> const&);
+        constexpr unexpected(unexpected<Err> const& e);
         template <typename Err, typename EE = E,
                   typename = std::enable_if_t<
                       expected_detail::unexpected_enable_copy_conversion_v<EE, Err> &&
                      !expected_detail::unexpected_enable_implicit_copy_conversion_v<EE, Err>
                   >>
-        constexpr explicit unexpected(unexpected<Err> const&);
+        constexpr explicit unexpected(unexpected<Err> const& e);
 
         template <typename Err, typename EE = E,
                   typename = std::enable_if_t<
@@ -3485,13 +3485,13 @@ class unexpected {
                   typename = std::enable_if_t<
                       expected_detail::unexpected_enable_implicit_move_conversion_v<EE, Err>
                   >>
-        constexpr unexpected(unexpected<Err>&&);
+        constexpr unexpected(unexpected<Err>&& e);
         template <typename Err, typename EE = E,
                   typename = std::enable_if_t<
                       expected_detail::unexpected_enable_move_conversion_v<EE, Err> &&
                      !expected_detail::unexpected_enable_implicit_move_conversion_v<EE, Err>
                   >>
-        constexpr explicit unexpected(unexpected<Err>&&);
+        constexpr explicit unexpected(unexpected<Err>&& e);
 
         constexpr unexpected& operator=(unexpected const&) = default;
         constexpr unexpected& operator=(unexpected&&) = default;
@@ -3499,12 +3499,12 @@ class unexpected {
                   typename = std::enable_if_t<
                       expected_detail::unexpected_enable_copy_assignment_v<EE, Err>
                   >>
-        constexpr unexpected& operator=(unexpected<Err> const&);
+        constexpr unexpected& operator=(unexpected<Err> const& e);
         template <typename Err = E, typename EE = E,
                   typename = std::enable_if_t<
                       expected_detail::unexpected_enable_move_assignment_v<EE, Err>
                   >>
-        constexpr unexpected& operator=(unexpected<Err>&&);
+        constexpr unexpected& operator=(unexpected<Err>&& e);
 
         constexpr E& value() & noexcept;
         constexpr E const& value() const & noexcept;
@@ -3515,12 +3515,12 @@ class unexpected {
                   typename = std::enable_if_t<
                       std::is_swappable_v<EE>
                   >>
-        void swap(unexpected&) noexcept(std::is_nothrow_swappable_v<E>);
+        void swap(unexpected& other) noexcept(std::is_nothrow_swappable_v<E>);
 
         template <typename E1, typename E2>
-        friend constexpr bool operator==(unexpected<E1> const&, unexpected<E2> const&);
+        friend constexpr bool operator==(unexpected<E1> const& x, unexpected<E2> const& y);
         template <typename E1, typename E2>
-        friend constexpr bool operator!=(unexpected<E1> const&, unexpected<E2> const&);
+        friend constexpr bool operator!=(unexpected<E1> const& x, unexpected<E2> const& y);
 
     private:
         E val_;
@@ -3624,7 +3624,7 @@ class bad_expected_access<void> : public std::exception {
 template <typename E>
 class bad_expected_access : public bad_expected_access<void> {
     public:
-        explicit bad_expected_access(E);
+        explicit bad_expected_access(E e);
         E& error() &;
         E const& error() const &;
         E&& error() &&;
