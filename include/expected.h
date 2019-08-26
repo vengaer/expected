@@ -1700,8 +1700,7 @@ struct expected_move_assign_base<T, E, true>
                 T tmp = std::move(this->internal_get_value());
                 this->internal_get_value().~T();
                 try {
-                    this->store_unexpect(unexpected(std::move(rhs.internal_get_unexpect().value()))
-                    );
+                    this->store_unexpect(unexpected(std::move(rhs.internal_get_unexpect().value())));
                 }
                 catch(...) {
                     this->store_val(std::move(tmp));
