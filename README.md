@@ -1,10 +1,10 @@
 # expected
 
-C++17 implementation of `std::expected` conforming to the interface proposed in [P0323R9](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0323r9.html).  
+C++17 implementation of `std::expected` conforming to the interface proposed in [P0323R9](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0323r9.html). 
 
 [![Build Status](https://gitlab.com/vilhelmengstrom/expected/badges/master/build.svg)](https://gitlab.com/vilhelmengstrom/expected/commits/master)
 
-## Rationale 
+## Rationale
 
 The current standard is somewhat limiting when it comes to error handling. We are forced to either juggle error codes (efficient but messy) or rely on exceptions (expressive but inefficient). Languages such as [Haskell](https://www.haskell.org) and [Rust](https://www.rust-lang.org) have instead chosen to use monadic error handling. This way, functions that may fail can return an instance of one of two types, one being of the 'correct' return type and one being of an error type. `std::expected` is this approach brought to C++. This would allow for the expressiveness of exceptions but with a significantly smaller performance hit (a single boolean check is enough), while also making the code more concise.
 
@@ -99,6 +99,10 @@ In addition to what is proposed in P0323R9, the implementation provides a few fu
 
         ASSERT(e2.error() == 8);
     ```
+
+### Compiler support
+
+Confirmed working on both GCC and Clang. MSVC is currently not supported due to their lacklustre SFINAE support.
 
 ### Dependencies
 [Catch2](https://github.com/catchorg/Catch2) is used for testing. The single-header version is included in the tests directory.
