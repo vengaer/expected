@@ -1095,21 +1095,21 @@ template <typename SrcContainer, typename DstContainer, typename F, typename FRe
           bool = is_pair_v<FRet>>
 struct convert {
     /* Use when std::is_same_v<SrcContainer, DstContainer> is false */
-    constexpr DstContainer operator()(SrcContainer& src, F const& f) const {
+    constexpr DstContainer operator()(SrcContainer& src, F&& f) const {
         DstContainer dst;
         if constexpr(supports_preallocation_v<DstContainer>)
             dst.reserve(src.size());
 
         std::transform(std::begin(src), std::end(src),
                        universal_inserter<DstContainer>{}(dst),
-                       f);
+                       std::forward<F>(f));
         return dst;
     };
 
     /* Use in rvalue overload when std::is_same_v<SrcContainer, DstContainer> is true */
-    constexpr void operator()(in_place_t, SrcContainer& src, F const& f) const {
+    constexpr void operator()(in_place_t, SrcContainer& src, F&& f) const {
         std::transform(std::begin(src), std::end(src),
-                       std::begin(src), f);
+                       std::begin(src), std::forward<F>(f));
     };
 };
 
@@ -1119,7 +1119,7 @@ struct convert {
 template <typename SrcContainer, typename DstContainer, typename F, typename FRet>
 struct convert<SrcContainer, DstContainer, F, FRet, true, false> {
     /* Use when std::is_same_v<SrcContainer, DstContainer> == false */
-    constexpr DstContainer operator()(SrcContainer& src, F const& f) const {
+    constexpr DstContainer operator()(SrcContainer& src, F&& f) const {
         DstContainer dst;
         if constexpr(supports_preallocation_v<DstContainer>)
             dst.reserve(src.size());
@@ -1128,19 +1128,19 @@ struct convert<SrcContainer, DstContainer, F, FRet, true, false> {
                        universal_inserter<DstContainer>{}(dst),
                        [&f](auto&& pair) {
             auto const key = pair.first;
-            return std::make_pair(key, std::invoke(f, std::forward<decltype(pair)>(pair)));
+            return std::make_pair(key, std::invoke(std::forward<F>(f), std::forward<decltype(pair)>(pair)));
         });
 
         return dst;
     };
 
     /* Use in rvalue overload when std::is_same_v<SrcContainer, DstContainer> is true */
-    constexpr void operator()(in_place_t, SrcContainer& src, F const& f) const {
+    constexpr void operator()(in_place_t, SrcContainer& src, F&& f) const {
         std::transform(std::begin(src), std::end(src),
                        std::begin(src),
                        [&f](auto&& pair) {
             auto const key = pair.first;
-            return std::make_pair(key, std::invoke(f, std::forward<decltype(pair)>(pair)));
+            return std::make_pair(key, std::invoke(std::forward<F>(f), std::forward<decltype(pair)>(pair)));
         });
     };
 };
@@ -1150,20 +1150,20 @@ struct convert<SrcContainer, DstContainer, F, FRet, true, false> {
 template <typename T1, typename T2, std::size_t N, typename F, typename FRet, bool B>
 struct convert<std::array<T1,N>, std::array<T2,N>, F, FRet, false, B> {
     /* Use when std::is_same_v<T1,T2> == false */
-    constexpr std::array<T2,N> operator()(std::array<T1,N>& src, F const& f) const {
-        return construct(src, f, std::make_index_sequence<N>{});
+    constexpr std::array<T2,N> operator()(std::array<T1,N>& src, F&& f) const {
+        return construct(src, std::forward<F>(f), std::make_index_sequence<N>{});
     }
 
     /* Use in rvalue overload when std::is_same_v<T1,T2> == true */
-    constexpr void operator()(in_place_t, std::array<T1,N>& src, F const& f) const {
+    constexpr void operator()(in_place_t, std::array<T1,N>& src, F&& f) const {
         std::transform(std::begin(src), std::end(src),
-                       std::begin(src), f);
+                       std::begin(src), std::forward<F>(f));
     }
 
     /* Create the dst array by invoking f. This avoids default constructing the elements */
     template <std::size_t... Is>
-    static constexpr std::array<T2,N> construct(std::array<T1,N> const& src, F const& f, std::index_sequence<Is...>) {
-        return {std::invoke(f, src[Is])...};
+    static constexpr std::array<T2,N> construct(std::array<T1,N> const& src, F&& f, std::index_sequence<Is...>) {
+        return {std::invoke(std::forward<F>(f), src[Is])...};
     }
 };
 
