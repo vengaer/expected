@@ -1908,12 +1908,9 @@ struct expected_copy_assign_base<T, E, true>
                 }
             }
         }
-
         return *this;
     }
 };
-
-
 
 /* expected_move_assign_base */
 /* Conditionally enable move assignment */
@@ -2001,7 +1998,6 @@ struct expected_move_assign_base<T, E, true>
                 }
             }
         }
-
         return *this;
     }
 };
@@ -2084,27 +2080,27 @@ class expected_interface_base : expected_move_assign_base<T,E> {
 
     protected:
         template <typename... Args>
-        void store_val(Args&&... args);
+        void store_val(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args&&...>);
 
         template <typename... Args>
-        void store_unexpect(Args&&... args);
+        void store_unexpect(Args&&... args) noexcept(std::is_nothrow_constructible_v<E, Args&&...>);
 
         template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
-        constexpr U& internal_get_value() &;
+        constexpr U& internal_get_value() & noexcept;
 
         template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
-        constexpr U const& internal_get_value() const &;
+        constexpr U const& internal_get_value() const & noexcept;
 
         template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
-        constexpr U&& internal_get_value() &&;
+        constexpr U&& internal_get_value() && noexcept;
 
         template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
-        constexpr U const&& internal_get_value() const &&;
+        constexpr U const&& internal_get_value() const && noexcept;
 
-        constexpr unexpected<E>& internal_get_unexpect() &;
-        constexpr unexpected<E> const& internal_get_unexpect() const &;
-        constexpr unexpected<E>&& internal_get_unexpect() &&;
-        constexpr unexpected<E> const&& internal_get_unexpect() const &&;
+        constexpr unexpected<E>& internal_get_unexpect() & noexcept;
+        constexpr unexpected<E> const& internal_get_unexpect() const & noexcept;
+        constexpr unexpected<E>&& internal_get_unexpect() && noexcept;
+        constexpr unexpected<E> const&& internal_get_unexpect() const && noexcept;
 };
 
 template <typename T, typename E>
@@ -2245,57 +2241,57 @@ constexpr bool operator!=(unexpected<E2> const& e, expected<T1, E1> const& x) {
 
 template <typename T, typename E>
 template <typename... Args>
-void expected_interface_base<T,E>::store_val(Args&&... args) {
+void expected_interface_base<T,E>::store_val(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args&&...>) {
     base_t::store_val(std::forward<Args>(args)...);
 }
 
 template <typename T, typename E>
 template <typename... Args>
-void expected_interface_base<T,E>::store_unexpect(Args&&... args) {
+void expected_interface_base<T,E>::store_unexpect(Args&&... args) noexcept(std::is_nothrow_constructible_v<E, Args&&...>) {
     base_t::store_unexpect(std::forward<Args>(args)...);
 }
 
 template <typename T, typename E>
 template <typename U, typename>
-constexpr U& expected_interface_base<T,E>::internal_get_value() & {
+constexpr U& expected_interface_base<T,E>::internal_get_value() & noexcept {
     return base_t::internal_get_value();
 }
 
 template <typename T, typename E>
 template <typename U, typename>
-constexpr U const& expected_interface_base<T,E>::internal_get_value() const & {
+constexpr U const& expected_interface_base<T,E>::internal_get_value() const & noexcept {
     return base_t::internal_get_value();
 }
 
 template <typename T, typename E>
 template <typename U, typename>
-constexpr U&& expected_interface_base<T,E>::internal_get_value() && {
+constexpr U&& expected_interface_base<T,E>::internal_get_value() && noexcept {
     return std::move(base_t::internal_get_value());
 }
 
 template <typename T, typename E>
 template <typename U, typename>
-constexpr U const&& expected_interface_base<T,E>::internal_get_value() const && {
+constexpr U const&& expected_interface_base<T,E>::internal_get_value() const && noexcept {
     return std::move(base_t::internal_get_value());
 }
 
 template <typename T, typename E>
-constexpr unexpected<E>& expected_interface_base<T,E>::internal_get_unexpect() & {
+constexpr unexpected<E>& expected_interface_base<T,E>::internal_get_unexpect() & noexcept {
     return base_t::internal_get_unexpect();
 }
 
 template <typename T, typename E>
-constexpr unexpected<E> const& expected_interface_base<T,E>::internal_get_unexpect() const & {
+constexpr unexpected<E> const& expected_interface_base<T,E>::internal_get_unexpect() const & noexcept {
     return base_t::internal_get_unexpect();
 }
 
 template <typename T, typename E>
-constexpr unexpected<E>&& expected_interface_base<T,E>::internal_get_unexpect() && {
+constexpr unexpected<E>&& expected_interface_base<T,E>::internal_get_unexpect() && noexcept {
     return std::move(base_t::internal_get_unexpect());
 }
 
 template <typename T, typename E>
-constexpr unexpected<E> const&& expected_interface_base<T,E>::internal_get_unexpect() const && {
+constexpr unexpected<E> const&& expected_interface_base<T,E>::internal_get_unexpect() const && noexcept {
     return std::move(base_t::internal_get_unexpect());
 }
 
@@ -2721,7 +2717,6 @@ void expected<T,E>::swap(expected& rhs) noexcept(std::is_nothrow_move_constructi
                 throw;
             }
         }
-
     }
 }
 
