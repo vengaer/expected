@@ -1599,35 +1599,35 @@ struct expected_construction_base : expected_base<T,E> {
         this->has_val_ = false;
     }
 
-    constexpr T& internal_get_value() & {
+    constexpr T& internal_get_value() & noexcept {
         return this->val_;
     }
 
-    constexpr T const& internal_get_value() const & {
+    constexpr T const& internal_get_value() const & noexcept {
         return this->val_;
     }
 
-    constexpr T&& internal_get_value() && {
+    constexpr T&& internal_get_value() && noexcept {
         return std::move(this->val_);
     }
 
-    constexpr T const&& internal_get_value() const && {
+    constexpr T const&& internal_get_value() const && noexcept {
         return std::move(this->val_);
     }
 
-    constexpr unexpected<E>& internal_get_unexpect() & {
+    constexpr unexpected<E>& internal_get_unexpect() & noexcept {
         return this->unexpect_;
     }
 
-    constexpr unexpected<E> const& internal_get_unexpect() const & {
+    constexpr unexpected<E> const& internal_get_unexpect() const & noexcept {
         return this->unexpect_;
     }
 
-    constexpr unexpected<E>&& internal_get_unexpect() && {
+    constexpr unexpected<E>&& internal_get_unexpect() && noexcept {
         return std::move(this->unexpect_);
     }
 
-    constexpr unexpected<E> const&& internal_get_unexpect() const && {
+    constexpr unexpected<E> const&& internal_get_unexpect() const && noexcept {
         return std::move(this->unexpect_);
     }
 
@@ -1654,19 +1654,19 @@ struct expected_construction_base<void, E> : expected_base<void,E> {
         this->has_val_ = false;
     }
 
-    constexpr unexpected<E>& internal_get_unexpect() & {
+    constexpr unexpected<E>& internal_get_unexpect() & noexcept {
         return this->unexpect_;
     }
 
-    constexpr unexpected<E> const& internal_get_unexpect() const & {
+    constexpr unexpected<E> const& internal_get_unexpect() const & noexcept {
         return this->unexpect_;
     }
 
-    constexpr unexpected<E>&& internal_get_unexpect() && {
+    constexpr unexpected<E>&& internal_get_unexpect() && noexcept {
         return std::move(this->unexpect_);
     }
 
-    constexpr unexpected<E> const&& internal_get_unexpect() const && {
+    constexpr unexpected<E> const&& internal_get_unexpect() const && noexcept {
         return std::move(this->unexpect_);
     }
 
@@ -2682,12 +2682,16 @@ void expected<T,E>::swap(expected& rhs) noexcept(std::is_nothrow_move_constructi
             unexpected<E> tmp = std::move(rhs.internal_get_unexpect());
             rhs.internal_get_unexpect().~unexpected<E>();
 
-            /* GCC erroneousely warns about throw; always calling terminate
-             * but swap is noexcept only if both T and E are nothrow move
-             * constructible, meaning the catch(...) is never entered */
+            /* GCC and MSVC erroneousely warn about throw; always calling
+             * terminate but swap is noexcept only if both T and E are
+             * nothrow move constructible, meaning the catch(...) is
+             * never entered */
             #if defined __GNUC__ && !defined __clang__
             #pragma GCC diagnostic push
             #pragma GCC diagnostic ignored "-Wterminate"
+            #elif defined _MSC_VER
+            #pragma warning( push )
+            #pragma warning( disable : 4297 )
             #endif
             try {
                 rhs.store_val(std::move(this->internal_get_value()));
@@ -2700,6 +2704,8 @@ void expected<T,E>::swap(expected& rhs) noexcept(std::is_nothrow_move_constructi
             }
             #if defined __GNUC__ && !defined __clang__
             #pragma GCC diagnostic pop
+            #elif defined _MSC_VER
+            #pragma warning( pop )
             #endif
         }
         else if constexpr(std::is_nothrow_move_constructible_v<T>) {
