@@ -103,7 +103,7 @@ In addition to what is proposed in P0323R9, the implementation provides a few fu
 
 ### Compiler support
 
-Confirmed working on both GCC and Clang. MSVC is currently not supported due to their lacklustre SFINAE support.
+Confirmed working on GCC, Clang, MSVC and Cygwin.
 
 ### Dependencies
 [Catch2](https://github.com/catchorg/Catch2) is used for testing. The single-header version is included in the tests directory.
