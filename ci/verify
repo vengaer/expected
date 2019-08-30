@@ -1,6 +1,11 @@
 #!/bin/bash
 
-output="$(./expected_test)"
+if [ -z $1 ] ; then
+    echo No executable provided >&2
+    exit 1
+fi
+
+output="$(./$1)"
 retval=$?
 
 exit_code=0
