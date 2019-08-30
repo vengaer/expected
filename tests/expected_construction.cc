@@ -76,15 +76,6 @@ TEST_CASE("unexpected<E> rvalue ctor is nothrow", "[expected][unexpected][nothro
                                             unexpected<int>>);
 }
 
-TEST_CASE("Destructor trivial iff T and E trivially destructible", "[expected][destructor][conditional][trivial]") {
-    REQUIRE(std::is_trivially_destructible_v<expected<int, double>>);
-    REQUIRE(!std::is_trivially_destructible_v<expected<std::string, double>>);
-    REQUIRE(!std::is_trivially_destructible_v<expected<double, std::string>>);
-    REQUIRE(!std::is_trivially_destructible_v<expected<std::string, std::string>>);
-    REQUIRE(std::is_trivially_destructible_v<expected<void, double>>);
-    REQUIRE(!std::is_trivially_destructible_v<expected<void, std::string>>);
-}
-
 TEST_CASE("Copy constructible iff type parameters are", "[expected][copy][conditional]") {
     struct not_copyable_t {
         not_copyable_t(not_copyable_t const&) = delete;
