@@ -4,6 +4,7 @@
 #include "expected.h"
 #include "traits.h"
 #include <array>
+#include <cctype>
 #include <forward_list>
 #include <functional>
 #include <map>
@@ -13,6 +14,9 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#ifdef _MSC_VER
+#include <ctype.h>
+#endif
 
 namespace expected_detail = vien::expected_detail;
 using vien::unexpect;
@@ -355,7 +359,12 @@ TEST_CASE("map_range works for associative container with non-pair type", "[expe
 TEST_CASE("map_range works for std::string", "[expected][extended][map_range][std::string]") {
     std::string str = "expected";
     vien::expected<std::string, int> e1(std::move(str));
-    auto e2 = e1.map_range([](unsigned char c) { return std::toupper(c); } );
+    auto e2 = e1.map_range([](unsigned char c) { 
+        #ifndef _MSC_VER
+        using std::toupper;
+        #endif
+        return toupper(c); 
+    });
     REQUIRE(*e2 == "EXPECTED");
 }
 
