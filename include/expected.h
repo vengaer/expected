@@ -336,6 +336,12 @@ using remove_cvref = std::remove_cv<std::remove_reference_t<T>>;
 template <typename T>
 using remove_cvref_t = typename remove_cvref<T>::type;
 
+template <typename T, typename... P0toN>
+struct is_one_of : std::disjunction<std::is_same<T, P0toN>...> { };
+
+template <typename T, typename... P0toN>
+inline bool constexpr is_one_of_v = is_one_of<T, P0toN...>::value;
+
 template <typename T>
 struct is_default_constructible_or_void
     : std::bool_constant<std::is_default_constructible_v<T> ||
@@ -363,19 +369,48 @@ template <typename T>
 inline bool constexpr is_move_constructible_or_void_v =
         is_move_constructible_or_void<T>::value;
 
+#ifdef __CYGWIN__
+/* Work around bug where Cygwin tries to form reference to void */
+template <typename T, typename = void>
+struct is_trivially_copy_constructible_or_void
+    : std::is_trivially_copy_constructible<T> { };
+
+template <typename T>
+struct is_trivially_copy_constructible_or_void<T, std::enable_if_t<
+    is_one_of_v<T, void,
+                   void const,
+                   void volatile,
+                   void const volatile>>> : std::true_type { };
+
+#else
 template <typename T>
 struct is_trivially_copy_constructible_or_void
     : std::bool_constant<std::is_trivially_copy_constructible_v<T> ||
                          std::is_void_v<T>> { };
+#endif
 
 template <typename T>
 inline bool constexpr is_trivially_copy_constructible_or_void_v =
         is_trivially_copy_constructible_or_void<T>::value;
 
+#ifdef __CYGWIN__
+/* Work around bug where Cygwin tries to form reference to void */
+template <typename T, typename = void>
+struct is_trivially_move_constructible_or_void
+    : std:is_triially_move_constructible<T> { };
+
+template <typename T>
+struct is_trivially_move_constructible_or_void<T, std::enable_if_t<
+    is_one_of_v<T, void,
+                   void const,
+                   void volatile,
+                   void const volatile>> std::true_type { };
+#else
 template <typename T>
 struct is_trivially_move_constructible_or_void
     : std::bool_constant<std::is_trivially_move_constructible_v<T> ||
                          std::is_void_v<T>> { };
+#endif
 
 template <typename T>
 inline bool constexpr is_trivially_move_constructible_or_void_v =
@@ -982,11 +1017,6 @@ struct is_pair<std::pair<K,M>> : std::true_type { };
 
 template <typename T>
 inline bool constexpr is_pair_v = is_pair<T>::value;
-template <typename T, typename... P0toN>
-struct is_one_of : std::bool_constant<(std::is_same_v<T, P0toN> || ...)> { };
-
-template <typename T, typename... P0toN>
-inline bool constexpr is_one_of_v = is_one_of<T, P0toN...>::value;
 
 template <typename, typename = void>
 struct is_char_type : std::false_type { };
