@@ -32,6 +32,6 @@ static_check:
 
 msvc: CXX := cl.exe
 msvc: OBJECTS := $(addsuffix obj, $(basename $(OBJ)))
-msvc: CXXFLAGS := /std:c++17 /W3 /I tests /I include /EHsc
+msvc: CXXFLAGS := /std:c++17 /W3 /I tests /I include
 msvc:
-	$(CXX) $(CXXFLAGS) $(SRC) /link /out:$(BIN).exe
+	$(CXX) $(CXXFLAGS) /EHsc $(SRC) /link /out:$(BIN).exe
