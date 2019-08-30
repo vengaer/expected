@@ -294,17 +294,10 @@ class bad_expected_access : public bad_expected_access<void> {
 
 #ifdef VIEN_EXPECTED_EXTENDED
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <functional>
 #include <iterator>
-#endif
-
-#ifdef VIEN_EXPECTED_EXTENDED
-/* Forward declare array */
-namespace std {
-    template <typename, std::size_t>
-    struct array;
-}
 #endif
 
 namespace vien {
