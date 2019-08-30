@@ -390,14 +390,14 @@ inline bool constexpr is_trivially_copy_constructible_or_void_v =
 /* Work around bug where Cygwin tries to form reference to void */
 template <typename T, typename = void>
 struct is_trivially_move_constructible_or_void
-    : std:is_triially_move_constructible<T> { };
+    : std::is_trivially_move_constructible<T> { };
 
 template <typename T>
 struct is_trivially_move_constructible_or_void<T, std::enable_if_t<
     is_one_of_v<T, void,
                    void const,
                    void volatile,
-                   void const volatile>> std::true_type { };
+                   void const volatile>>> : std::true_type { };
 #else
 template <typename T>
 struct is_trivially_move_constructible_or_void
