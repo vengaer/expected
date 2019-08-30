@@ -1,4 +1,4 @@
-version: 1.0.'{build}'
+version: '{build}'
 
 image: Visual Studio 2017
 shallow_clone: true
@@ -10,9 +10,15 @@ platform:
     -x64
 
 install:
-    set PATH=%PATH%;c:\cygwin\bin
+    set PATH=%PATH%;C:\cygwin\bin
 
 build_script:
     - call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
     - set CXX=cl.exe
-    - make.exe msvc -j4
+    - make.exe msvc -j4 CXXFLAGS="/std:c++17 /W3 /I tests /I include"
+
+artifacts:
+    - path: expected_test.exe
+
+test_script:
+    - call ci/verify.bat
