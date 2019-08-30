@@ -3,7 +3,7 @@
 C++17 implementation of `std::expected` conforming to the interface proposed in [P0323R9](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0323r9.html). 
 
 [![Build Status](https://gitlab.com/vilhelmengstrom/expected/badges/master/build.svg)](https://gitlab.com/vilhelmengstrom/expected/commits/master)
-[![Build Status](https://ci.appveyor.com/api/projects/status/bnch0dnvxhanb4om//ci.appveyor.com/project/VilhelmEngstrom/expected)
+[![Build Status](https://ci.appveyor.com/api/projects/status/bnch0dnvxhanb4om?svg=true)](https://ci.appveyor.com/project/VilhelmEngstrom/expected)
 
 ## Rationale
 
