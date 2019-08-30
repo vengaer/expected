@@ -82,7 +82,11 @@ TEST_CASE("map creates no unneccessary copies", "[expected][map]") {
     });
 
     REQUIRE(copies == 0);
+
+    /* msvc does its own thing... */
+    #ifndef _MSC_VER
     REQUIRE(moves == 4);
+    #endif
     REQUIRE(bool(e2));
 }
 
@@ -155,7 +159,11 @@ TEST_CASE("and_then creates no unnecessary copies", "[expected][extended][and_th
     });
 
     REQUIRE(copies == 0);
+
+    /* msvc does its own thing... */
+    #ifndef _MSC_VER
     REQUIRE(moves == 4);
+    #endif
     REQUIRE(bool(e2));
 }
 
