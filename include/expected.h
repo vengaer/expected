@@ -1588,13 +1588,13 @@ struct expected_construction_base : expected_base<T,E> {
     constexpr expected_construction_base() = default;
 
     template <typename... Args>
-    constexpr void store_val(Args&&... args) {
+    constexpr void store_val(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args&&...>) {
         new(std::addressof(this->val_)) T(std::forward<Args>(args)...);
         this->has_val_ = true;
     }
 
     template <typename... Args>
-    constexpr void store_unexpect(Args&&... args) {
+    constexpr void store_unexpect(Args&&... args) noexcept(std::is_nothrow_constructible_v<E, Args&&...>) {
         new (std::addressof(this->unexpect_)) unexpected<E>(std::forward<Args>(args)...);
         this->has_val_ = false;
     }
@@ -1649,7 +1649,7 @@ struct expected_construction_base<void, E> : expected_base<void,E> {
     }
 
     template <typename... Args>
-    constexpr void store_unexpect(Args&&... args) {
+    constexpr void store_unexpect(Args&&... args) noexcept(std::is_nothrow_constructible_v<E, Args&&...>) {
         new (std::addressof(this->unexpect_)) unexpected<E>(std::forward<Args>(args)...);
         this->has_val_ = false;
     }
