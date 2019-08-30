@@ -6,23 +6,23 @@
 #include <type_traits>
 #include <utility>
 
-using namespace vien;
+using vien::unexpect;
 
 TEMPLATE_TEST_CASE("internal swap noexcept when appropriate", "[expected][swap]",
-                    (expected<void, int>), (expected<int, double>) ){
-    REQUIRE(internal_swap_is_noexcept_v<TestType>);
+                    (vien::expected<void, int>), (vien::expected<int, double>) ){
+    REQUIRE(vien::internal_swap_is_noexcept_v<TestType>);
 }
 
 TEST_CASE("internal swap not noexcept when not appropriate", "[expected][swap]") {
-    REQUIRE(!internal_swap_is_noexcept_v<expected<void, swap_test_t<void>>>);
-    REQUIRE(!internal_swap_is_noexcept_v<expected<int, swap_test_t<void>>>);
-    REQUIRE(!internal_swap_is_noexcept_v<expected<swap_test_t<void>, int>>);
+    REQUIRE(!vien::internal_swap_is_noexcept_v<vien::expected<void, swap_test_t<void>>>);
+    REQUIRE(!vien::internal_swap_is_noexcept_v<vien::expected<int, swap_test_t<void>>>);
+    REQUIRE(!vien::internal_swap_is_noexcept_v<vien::expected<swap_test_t<void>, int>>);
 }
 
 TEST_CASE("internal swap correct if bool(lhs) == bool(rhs)", "[expected][swap]") {
     SECTION("T not void and bool(e1) == bool(e2) == true") {
-        expected<std::string, double> e1("10");
-        expected<std::string, double> e2("20");
+        vien::expected<std::string, double> e1("10");
+        vien::expected<std::string, double> e2("20");
 
         REQUIRE(e1.value() == "10");
         REQUIRE(e2.value() == "20");
@@ -34,8 +34,8 @@ TEST_CASE("internal swap correct if bool(lhs) == bool(rhs)", "[expected][swap]")
     }
 
     SECTION("T is void and bool(e1) == bool(e2) == true") {
-        expected<void, double> e1{};
-        expected<void, double> e2{};
+        vien::expected<void, double> e1{};
+        vien::expected<void, double> e2{};
 
         REQUIRE(bool(e1));
         REQUIRE(bool(e2));
@@ -47,8 +47,8 @@ TEST_CASE("internal swap correct if bool(lhs) == bool(rhs)", "[expected][swap]")
     }
 
     SECTION("T not void and bool(e1) == bool(e2) == false") {
-        expected<std::string, int> e1(unexpect, 10);
-        expected<std::string, int> e2(unexpect, 20);
+        vien::expected<std::string, int> e1(unexpect, 10);
+        vien::expected<std::string, int> e2(unexpect, 20);
 
         REQUIRE(!bool(e1));
         REQUIRE(!bool(e2));
@@ -66,8 +66,8 @@ TEST_CASE("internal swap correct if bool(lhs) == bool(rhs)", "[expected][swap]")
     }
 
     SECTION("T is void and bool(e1) == bool(e2) == false") {
-        expected<void, int> e1(unexpect, 10);
-        expected<void, int> e2(unexpect, 20);
+        vien::expected<void, int> e1(unexpect, 10);
+        vien::expected<void, int> e2(unexpect, 20);
 
         REQUIRE(!bool(e1));
         REQUIRE(!bool(e2));
@@ -87,8 +87,8 @@ TEST_CASE("internal swap correct if bool(lhs) == bool(rhs)", "[expected][swap]")
 
 TEST_CASE("internal swap correct if bool(lhs) != bool(rhs)", "[expected][swap]") {
     SECTION("T not void and bool(e1) == true  and bool(e2) == false") {
-        expected<std::string, int> e1("10");
-        expected<std::string, int> e2(unexpect, 20);
+        vien::expected<std::string, int> e1("10");
+        vien::expected<std::string, int> e2(unexpect, 20);
 
         REQUIRE(bool(e1));
         REQUIRE(!bool(e2));
@@ -106,8 +106,8 @@ TEST_CASE("internal swap correct if bool(lhs) != bool(rhs)", "[expected][swap]")
     }
 
     SECTION("T is void and bool(e1) == true and  bool(e2) == false") {
-        expected<void, int> e1{};
-        expected<void, int> e2(unexpect, 10);
+        vien::expected<void, int> e1{};
+        vien::expected<void, int> e2(unexpect, 10);
 
         REQUIRE(bool(e1));
         REQUIRE(!bool(e2));
@@ -123,8 +123,8 @@ TEST_CASE("internal swap correct if bool(lhs) != bool(rhs)", "[expected][swap]")
     }
 
     SECTION("T not void and bool(e1) == false and bool(e2) == true") {
-        expected<std::string, int> e1(unexpect, 20);
-        expected<std::string, int> e2("10");
+        vien::expected<std::string, int> e1(unexpect, 20);
+        vien::expected<std::string, int> e2("10");
 
         REQUIRE(!bool(e1));
         REQUIRE(bool(e2));
@@ -142,8 +142,8 @@ TEST_CASE("internal swap correct if bool(lhs) != bool(rhs)", "[expected][swap]")
     }
 
     SECTION("T is void and bool(e1) == false and bool(e2) == true") {
-        expected<void, int> e1(unexpect, 10);
-        expected<void, int> e2{};
+        vien::expected<void, int> e1(unexpect, 10);
+        vien::expected<void, int> e2{};
 
         REQUIRE(!bool(e1));
         REQUIRE(bool(e2));
@@ -162,20 +162,20 @@ TEST_CASE("internal swap correct if bool(lhs) != bool(rhs)", "[expected][swap]")
 }
 
 TEMPLATE_TEST_CASE("std::swap noexcept when appropriate", "[expected][swap]",
-                    (expected<void, int>), (expected<int, double>) ){
-    REQUIRE(standard_swap_is_noexcept_v<TestType>);
+                    (vien::expected<void, int>), (vien::expected<int, double>) ){
+    REQUIRE(vien::standard_swap_is_noexcept_v<TestType>);
 }
 
 TEST_CASE("std::swap not noexcept when not appropriate", "[expected][swap]") {
-    REQUIRE(!standard_swap_is_noexcept_v<expected<void, swap_test_t<void>>>);
-    REQUIRE(!standard_swap_is_noexcept_v<expected<int, swap_test_t<void>>>);
-    REQUIRE(!standard_swap_is_noexcept_v<expected<swap_test_t<void>, int>>);
+    REQUIRE(!vien::standard_swap_is_noexcept_v<vien::expected<void, swap_test_t<void>>>);
+    REQUIRE(!vien::standard_swap_is_noexcept_v<vien::expected<int, swap_test_t<void>>>);
+    REQUIRE(!vien::standard_swap_is_noexcept_v<vien::expected<swap_test_t<void>, int>>);
 }
 
 TEST_CASE("std::swap correct if bool(lhs) == bool(rhs)", "[expected][swap]") {
     SECTION("T not void and bool(e1) == bool(e2) == true") {
-        expected<std::string, double> e1("10");
-        expected<std::string, double> e2("20");
+        vien::expected<std::string, double> e1("10");
+        vien::expected<std::string, double> e2("20");
 
         REQUIRE(e1.value() == "10");
         REQUIRE(e2.value() == "20");
@@ -187,8 +187,8 @@ TEST_CASE("std::swap correct if bool(lhs) == bool(rhs)", "[expected][swap]") {
     }
 
     SECTION("T is void and bool(e1) == bool(e2) == true") {
-        expected<void, double> e1{};
-        expected<void, double> e2{};
+        vien::expected<void, double> e1{};
+        vien::expected<void, double> e2{};
 
         REQUIRE(bool(e1));
         REQUIRE(bool(e2));
@@ -200,8 +200,8 @@ TEST_CASE("std::swap correct if bool(lhs) == bool(rhs)", "[expected][swap]") {
     }
 
     SECTION("T not void and bool(e1) == bool(e2) == false") {
-        expected<std::string, int> e1(unexpect, 10);
-        expected<std::string, int> e2(unexpect, 20);
+        vien::expected<std::string, int> e1(unexpect, 10);
+        vien::expected<std::string, int> e2(unexpect, 20);
 
         REQUIRE(!bool(e1));
         REQUIRE(!bool(e2));
@@ -219,8 +219,8 @@ TEST_CASE("std::swap correct if bool(lhs) == bool(rhs)", "[expected][swap]") {
     }
 
     SECTION("T is void and bool(e1) == bool(e2) == false") {
-        expected<void, int> e1(unexpect, 10);
-        expected<void, int> e2(unexpect, 20);
+        vien::expected<void, int> e1(unexpect, 10);
+        vien::expected<void, int> e2(unexpect, 20);
 
         REQUIRE(!bool(e1));
         REQUIRE(!bool(e2));
@@ -240,8 +240,8 @@ TEST_CASE("std::swap correct if bool(lhs) == bool(rhs)", "[expected][swap]") {
 
 TEST_CASE("std::swap correct if bool(lhs) != bool(rhs)", "[expected][swap]") {
     SECTION("T not void and bool(e1) == true  and bool(e2) == false") {
-        expected<std::string, int> e1("10");
-        expected<std::string, int> e2(unexpect, 20);
+        vien::expected<std::string, int> e1("10");
+        vien::expected<std::string, int> e2(unexpect, 20);
 
         REQUIRE(bool(e1));
         REQUIRE(!bool(e2));
@@ -259,8 +259,8 @@ TEST_CASE("std::swap correct if bool(lhs) != bool(rhs)", "[expected][swap]") {
     }
 
     SECTION("T is void and bool(e1) == true and  bool(e2) == false") {
-        expected<void, int> e1{};
-        expected<void, int> e2(unexpect, 10);
+        vien::expected<void, int> e1{};
+        vien::expected<void, int> e2(unexpect, 10);
 
         REQUIRE(bool(e1));
         REQUIRE(!bool(e2));
@@ -276,8 +276,8 @@ TEST_CASE("std::swap correct if bool(lhs) != bool(rhs)", "[expected][swap]") {
     }
 
     SECTION("T not void and bool(e1) == false and bool(e2) == true") {
-        expected<std::string, int> e1(unexpect, 20);
-        expected<std::string, int> e2("10");
+        vien::expected<std::string, int> e1(unexpect, 20);
+        vien::expected<std::string, int> e2("10");
 
         REQUIRE(!bool(e1));
         REQUIRE(bool(e2));
@@ -295,8 +295,8 @@ TEST_CASE("std::swap correct if bool(lhs) != bool(rhs)", "[expected][swap]") {
     }
 
     SECTION("T is void and bool(e1) == false and bool(e2) == true") {
-        expected<void, int> e1(unexpect, 10);
-        expected<void, int> e2{};
+        vien::expected<void, int> e1(unexpect, 10);
+        vien::expected<void, int> e2{};
 
         REQUIRE(!bool(e1));
         REQUIRE(bool(e2));

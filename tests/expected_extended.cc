@@ -14,16 +14,17 @@
 #include <unordered_set>
 #include <vector>
 
-using namespace vien;
+namespace expected_detail = vien::expected_detail;
+using vien::unexpect;
 
 TEST_CASE("map returns correct value", "[expected][extended][map]") {
-    expected<int, double> e1(10);
-    expected<int, int> e2(unexpect, 20);
+    vien::expected<int, double> e1(10);
+    vien::expected<int, int> e2(unexpect, 20);
     auto e3 = e1.map([](int i) {
         return std::to_string(10*i);
     });
 
-    REQUIRE(std::is_same_v<expected<std::string, double>, decltype(e3)>);
+    REQUIRE(std::is_same_v<vien::expected<std::string, double>, decltype(e3)>);
     REQUIRE(bool(e3));
     REQUIRE("100" == e3);
 
@@ -31,31 +32,31 @@ TEST_CASE("map returns correct value", "[expected][extended][map]") {
         return std::to_string(i);
     });
 
-    REQUIRE(std::is_same_v<expected<std::string, int>, decltype(e4)>);
+    REQUIRE(std::is_same_v<vien::expected<std::string, int>, decltype(e4)>);
     REQUIRE(!bool(e4));
-    REQUIRE(e4 == unexpected(20));
+    REQUIRE(e4 == vien::unexpected(20));
 }
 
 TEST_CASE("Chaining maps yields correct result", "[expected][extended][map]") {
-    expected<int, double> e1(10);
+    vien::expected<int, double> e1(10);
 
     auto e2 = e1.map([](int i) {
         return std::to_string(i);
     }).map([](std::string const& str) {
         return std::to_string(std::atoi(str.data()) * 4);
     });
-    REQUIRE(std::is_same_v<expected<std::string, double>, decltype(e2)>);
+    REQUIRE(std::is_same_v<vien::expected<std::string, double>, decltype(e2)>);
     REQUIRE(bool(e2));
     REQUIRE("40" == e2);
 }
 
 TEST_CASE("map when T is void", "[expected][extended][map]") {
-    expected<void, int> e1{};
+    vien::expected<void, int> e1{};
 
     auto e2 = e1.map([]() {
         return 10;
     });
-    REQUIRE(std::is_same_v<expected<int, int>, decltype(e2)>);
+    REQUIRE(std::is_same_v<vien::expected<int, int>, decltype(e2)>);
     REQUIRE(e2 == 10);
 }
 
@@ -68,7 +69,7 @@ TEST_CASE("map creates no unneccessary copies", "[expected][map]") {
         count_ops_t(count_ops_t&&) { ++moves; }
     };
 
-    expected<count_ops_t, int> e1{};
+    vien::expected<count_ops_t, int> e1{};
 
     auto e2 = std::move(e1).map([](count_ops_t&& i) {
         return std::move(i);
@@ -82,14 +83,14 @@ TEST_CASE("map creates no unneccessary copies", "[expected][map]") {
 }
 
 TEST_CASE("map_error modifies error", "[expected][extended][map_error]") {
-    expected<std::string, int> e1("string");
-    expected<std::string, int> e2(unexpect, 10);
+    vien::expected<std::string, int> e1("string");
+    vien::expected<std::string, int> e2(unexpect, 10);
 
     auto e3 = e1.map_error([](int) {
         return double{};
     });
 
-    REQUIRE(std::is_same_v<expected<std::string, double>, decltype(e3)>);
+    REQUIRE(std::is_same_v<vien::expected<std::string, double>, decltype(e3)>);
     REQUIRE(e3.has_value());
     REQUIRE(e3 == "string");
 
@@ -99,22 +100,22 @@ TEST_CASE("map_error modifies error", "[expected][extended][map_error]") {
         return std::to_string(i);
     });
 
-    REQUIRE(std::is_same_v<expected<std::string, std::string>, decltype(e4)>);
+    REQUIRE(std::is_same_v<vien::expected<std::string, std::string>, decltype(e4)>);
     REQUIRE(!bool(e4));
-    REQUIRE(e4 == unexpected("2000"));
+    REQUIRE(e4 == vien::unexpected("2000"));
 
-    expected<void, int> e5(unexpect, 10);
+    vien::expected<void, int> e5(unexpect, 10);
 
     auto e6 = e5.map_error([](int i) {
         return 2 * i;
     });
 
-    REQUIRE(e6 == unexpected(20));
+    REQUIRE(e6 == vien::unexpected(20));
 }
 
 TEST_CASE("and_then yields correct values", "[expected][extended][and_then]") {
     auto squared = [](int i) { return i * i; };
-    expected<int, std::string> e1(2);
+    vien::expected<int, std::string> e1(2);
 
     auto e2 = e1.and_then(squared).and_then(squared);
     REQUIRE(std::is_same_v<decltype(e1), decltype(e2)>);
@@ -124,12 +125,12 @@ TEST_CASE("and_then yields correct values", "[expected][extended][and_then]") {
     REQUIRE(std::is_same_v<decltype(e1), decltype(e2)>);
     REQUIRE(e2 == 256);
 
-    expected<int, std::string> e3(unexpect, "string");
+    vien::expected<int, std::string> e3(unexpect, "string");
     auto e4 = e3.and_then(squared).and_then(squared);
 
     REQUIRE(std::is_same_v<decltype(e3), decltype(e4)>);
     REQUIRE(!bool(e4));
-    REQUIRE(e4 == unexpected("string"));
+    REQUIRE(e4 == vien::unexpected("string"));
 }
 
 TEST_CASE("and_then creates no unnecessary copies", "[expected][extended][and_then]") {
@@ -141,7 +142,7 @@ TEST_CASE("and_then creates no unnecessary copies", "[expected][extended][and_th
         count_ops_t(count_ops_t&&) { ++moves; }
     };
 
-    expected<count_ops_t, int> e1{};
+    vien::expected<count_ops_t, int> e1{};
 
     auto e2 = std::move(e1).and_then([](count_ops_t&& i) {
         return std::move(i);
@@ -155,8 +156,8 @@ TEST_CASE("and_then creates no unnecessary copies", "[expected][extended][and_th
 }
 
 TEST_CASE("map_range available iff T is container", "[expected][map_range]") {
-    REQUIRE(has_map_range_v<expected<std::vector<int>, int>>);
-    REQUIRE(!has_map_range_v<expected<int, int>>);
+    REQUIRE(vien::has_map_range_v<vien::expected<std::vector<int>, int>>);
+    REQUIRE(!vien::has_map_range_v<vien::expected<int, int>>);
 }
 
 TEST_CASE("rebind_unary_template meta function", "[expected_detail][rebind_unary_template]") {
@@ -192,22 +193,22 @@ TEST_CASE("map_range converts correctly when bool(*this)", "[expected][extended]
     std::vector<int> v1{1,2,3,4,5};
     std::vector<std::string> const v2{"1", "2", "3", "4", "5"};
 
-    expected<std::vector<int>, double> e1(std::move(v1));
+    vien::expected<std::vector<int>, double> e1(std::move(v1));
 
     auto e2 = e1.map_range( [](int i) { return std::to_string(i); } );
 
-    REQUIRE(std::is_same_v<decltype(e2), expected<std::vector<std::string>, double>>);
+    REQUIRE(std::is_same_v<decltype(e2), vien::expected<std::vector<std::string>, double>>);
     REQUIRE(bool(e2));
     REQUIRE(*e2 == v2);
 }
 
 TEST_CASE("map_range converts when !bool(*this)", "[expected][extended][map_range]") {
     std::string const str = "str";
-    expected<std::vector<int>, std::string> e1(unexpect, str);
+    vien::expected<std::vector<int>, std::string> e1(unexpect, str);
 
     auto e2 = e1.map_range( [](int i) { return std::to_string(i); } );
 
-    REQUIRE(std::is_same_v<decltype(e2), expected<std::vector<std::string>, std::string>>);
+    REQUIRE(std::is_same_v<decltype(e2), vien::expected<std::vector<std::string>, std::string>>);
     REQUIRE(!bool(e2));
     REQUIRE(e2.error() == str);
 }
@@ -215,13 +216,13 @@ TEST_CASE("map_range converts when !bool(*this)", "[expected][extended][map_rang
 TEST_CASE("map_range works for standard array", "[expected][extended][map_range][array]") {
     std::array<int, 4> ai{1,2,3,4};
     std::array<std::string, 4> as{"1","2","3","4"};
-    expected<std::array<std::string, 4>, int> e1(std::move(as));
+    vien::expected<std::array<std::string, 4>, int> e1(std::move(as));
 
     auto e2 = e1.map_range( [](std::string const& str) {
         return std::atoi(str.data());
     });
 
-    REQUIRE(std::is_same_v<decltype(e2), expected<std::array<int, 4>, int>>);
+    REQUIRE(std::is_same_v<decltype(e2), vien::expected<std::array<int, 4>, int>>);
     REQUIRE(bool(e2));
     REQUIRE(e2 == ai);
 }
@@ -242,7 +243,7 @@ TEST_CASE("map_range works for standard array with non-default constructible val
     std::array<int, 5> ai{1,2,3,4,5};
     std::array<non_default_t, 5> an{1,2,3,4,5};
 
-    expected<std::array<int,5>, int> e1{std::move(ai)};
+    vien::expected<std::array<int,5>, int> e1{std::move(ai)};
 
     auto e2 = e1.map_range([](int i) {
         return non_default_t(i);
@@ -256,7 +257,7 @@ TEST_CASE("map_range works for insert-only container", "[expected][extended][map
     std::set<int> si{1,2};
     std::set<std::string> ss{"1","2", "4"};
 
-    expected<std::set<int>, int> e1(std::move(si));
+    vien::expected<std::set<int>, int> e1(std::move(si));
 
     auto e2 = e1.and_then([](std::set<int> s) {
         auto sc = s;
@@ -267,7 +268,7 @@ TEST_CASE("map_range works for insert-only container", "[expected][extended][map
         return std::to_string(i);
     });
 
-    REQUIRE(std::is_same_v<decltype(e2), expected<std::set<std::string>, int>>);
+    REQUIRE(std::is_same_v<decltype(e2), vien::expected<std::set<std::string>, int>>);
     REQUIRE(bool(e2));
     REQUIRE(e2 == ss);
 }
@@ -276,13 +277,13 @@ TEST_CASE("map_range works for push_front-only container", "[expected][extended]
     std::forward_list<int> l1{1,2,3};
     std::forward_list<std::string> l2{"3","2","1"};
 
-    expected<std::forward_list<int>, int> e1(std::move(l1));
+    vien::expected<std::forward_list<int>, int> e1(std::move(l1));
 
     auto e2 = e1.map_range([](int i) {
         return std::to_string(i);
     });
 
-    REQUIRE(std::is_same_v<decltype(e2), expected<std::forward_list<std::string>, int>>);
+    REQUIRE(std::is_same_v<decltype(e2), vien::expected<std::forward_list<std::string>, int>>);
     REQUIRE(bool(e2));
     REQUIRE(e2 == l2);
 }
@@ -291,13 +292,13 @@ TEST_CASE("map_range works for hashing container", "[expected][extended][map_ran
     std::unordered_set<int> u1{1,2,3};
     std::unordered_set<std::string> u2{"1","2","3"};
 
-    expected<std::unordered_set<int>, int> e1(std::move(u1));
+    vien::expected<std::unordered_set<int>, int> e1(std::move(u1));
 
     auto e2 = e1.map_range([](int i) {
         return std::to_string(i);
     });
 
-    REQUIRE(std::is_same_v<decltype(e2), expected<std::unordered_set<std::string>, int>>);
+    REQUIRE(std::is_same_v<decltype(e2), vien::expected<std::unordered_set<std::string>, int>>);
     REQUIRE(bool(e2));
     REQUIRE(e2 == u2);
 }
@@ -313,14 +314,14 @@ TEST_CASE("map_range works for associative container with pair type", "[expected
     m2.insert({2, "2"});
     m2.insert({3, "3"});
 
-    expected<std::map<std::string, int>, double> e1(std::move(m1));
+    vien::expected<std::map<std::string, int>, double> e1(std::move(m1));
 
     auto e2 = e1.map_range([](auto&& pair) {
         return std::make_pair(std::forward<decltype(pair.second)>(pair.second),
                               std::forward<decltype(pair.first)>(pair.first));
     });
 
-    REQUIRE(std::is_same_v<decltype(e2), expected<std::map<int, std::string>, double>>);
+    REQUIRE(std::is_same_v<decltype(e2), vien::expected<std::map<int, std::string>, double>>);
     REQUIRE(bool(e2));
     REQUIRE(e2 == m2);
 }
@@ -338,13 +339,13 @@ TEST_CASE("map_range works for associative container with non-pair type", "[expe
     m2.insert({"2", "1"});
     m2.insert({"2", "2"});
 
-    expected<std::unordered_multimap<std::string, int>, int> e1(std::move(m1));
+    vien::expected<std::unordered_multimap<std::string, int>, int> e1(std::move(m1));
 
     auto e2 = e1.map_range([](auto&& pair) {
         return std::to_string(std::forward<decltype(pair.second)>(pair.second));
     });
 
-    REQUIRE(std::is_same_v<expected<std::unordered_multimap<std::string, std::string>,
+    REQUIRE(std::is_same_v<vien::expected<std::unordered_multimap<std::string, std::string>,
                                     int>,
                            decltype(e2)>);
     REQUIRE(bool(e2));
@@ -353,7 +354,7 @@ TEST_CASE("map_range works for associative container with non-pair type", "[expe
 
 TEST_CASE("map_range works for std::string", "[expected][extended][map_range][std::string]") {
     std::string str = "expected";
-    expected<std::string, int> e1(std::move(str));
+    vien::expected<std::string, int> e1(std::move(str));
     auto e2 = e1.map_range([](unsigned char c) { return std::toupper(c); } );
     REQUIRE(*e2 == "EXPECTED");
 }
@@ -361,15 +362,15 @@ TEST_CASE("map_range works for std::string", "[expected][extended][map_range][st
 TEST_CASE("map_range works for std::basic_string with non-char type", "[expected][extended][map_range]") {
     std::basic_string<bool> s1{false, false, true};
     std::basic_string<bool> s2{true, true, false};
-    expected<std::basic_string<bool>, int> e1(std::move(s1));
+    vien::expected<std::basic_string<bool>, int> e1(std::move(s1));
 
     auto e2 = e1.map_range([](bool b) { return !b; });
     REQUIRE(*e2 == s2);
 }
 
 TEST_CASE("map_or_else invokes callables correctly", "[expected][extended][map_or_else]") {
-    expected<int, std::string> e1(unexpect, "12");
-    expected<int, std::string> e2(10);
+    vien::expected<int, std::string> e1(unexpect, "12");
+    vien::expected<int, std::string> e2(10);
 
     REQUIRE(12 == e1.map_or_else([](int i) { return 2 * i; },
                                  [](auto const& str) { return std::atoi(str.data()); }));
@@ -379,8 +380,8 @@ TEST_CASE("map_or_else invokes callables correctly", "[expected][extended][map_o
 
 TEMPLATE_TEST_CASE("or_else invokes returns correct value", "[expected][extended][or_else]", void, std::string) {
 
-    expected<TestType, int> e1(unexpect, 10);
-    expected<TestType, int> e2{};
+    vien::expected<TestType, int> e1(unexpect, 10);
+    vien::expected<TestType, int> e2{};
     if constexpr(std::is_same_v<std::string, TestType>)
         e2 = "str";
 

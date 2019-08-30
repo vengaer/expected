@@ -3,21 +3,21 @@
 #include "expected.h"
 #include <string>
 
-using namespace vien;
+using vien::unexpect;
 
 TEST_CASE("Comparison with expected", "[expected][comparison]") {
-    expected<std::string, int> e1("string");
-    expected<std::string, int> e2("string");
-    expected<std::string, int> e3("other string");
-    expected<std::string, int> e4(unexpect, 10);
-    expected<std::string, int> e5(unexpect, 10);
-    expected<std::string, int> e6(unexpect, 20);
+    vien::expected<std::string, int> e1("string");
+    vien::expected<std::string, int> e2("string");
+    vien::expected<std::string, int> e3("other string");
+    vien::expected<std::string, int> e4(unexpect, 10);
+    vien::expected<std::string, int> e5(unexpect, 10);
+    vien::expected<std::string, int> e6(unexpect, 20);
 
-    expected<void, int> e7{};
-    expected<void, int> e8{};
-    expected<void, int> e9(unexpect, 10);
-    expected<void, int> e10(unexpect, 10);
-    expected<void, int> e11(unexpect, 12);
+    vien::expected<void, int> e7{};
+    vien::expected<void, int> e8{};
+    vien::expected<void, int> e9(unexpect, 10);
+    vien::expected<void, int> e10(unexpect, 10);
+    vien::expected<void, int> e11(unexpect, 12);
 
     REQUIRE(e1 == e2);
     REQUIRE(e1 != e3);
@@ -36,9 +36,9 @@ TEST_CASE("Comparison with expected", "[expected][comparison]") {
 
 TEST_CASE("Comparison with T", "[expected][comparison]") {
     std::string const str = "comparison";
-    expected<std::string, int> e1(str);
-    expected<std::string, int> e2(unexpect, 10);
-    expected<std::string, int> e3("other");
+    vien::expected<std::string, int> e1(str);
+    vien::expected<std::string, int> e2(unexpect, 10);
+    vien::expected<std::string, int> e3("other");
 
     REQUIRE(e1 == str);
     REQUIRE(str == e1);
@@ -51,10 +51,10 @@ TEST_CASE("Comparison with T", "[expected][comparison]") {
 }
 
 TEST_CASE("Comparison with unexpected<E>", "[expected][comparison][unexpected]") {
-    unexpected<int> u1(10);
-    unexpected<int> u2(20);
-    expected<std::string, int> e1(unexpect, 10);
-    expected<std::string, int> e2("expected");
+    vien::unexpected<int> u1(10);
+    vien::unexpected<int> u2(20);
+    vien::expected<std::string, int> e1(unexpect, 10);
+    vien::expected<std::string, int> e2("expected");
 
     REQUIRE(u1 == e1);
     REQUIRE(e1 != u2);

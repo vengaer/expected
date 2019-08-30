@@ -8,7 +8,7 @@
 #include <type_traits>
 #include <vector>
 
-using namespace vien;
+using vien::unexpect;
 
 TEST_CASE("Copy assignment disallowed when appropriate", "[expected][assignment][copy]") {
     struct not_copy_constructible_t {
@@ -28,20 +28,20 @@ TEST_CASE("Copy assignment disallowed when appropriate", "[expected][assignment]
         move_ctor_may_throw_t& operator=(move_ctor_may_throw_t const&) = default;
     };
 
-    REQUIRE(!std::is_copy_assignable_v<expected<void, not_copy_assignable_t>>);
-    REQUIRE(!std::is_copy_assignable_v<expected<void, not_copy_constructible_t>>);
+    REQUIRE(!std::is_copy_assignable_v<vien::expected<void, not_copy_assignable_t>>);
+    REQUIRE(!std::is_copy_assignable_v<vien::expected<void, not_copy_constructible_t>>);
 
-    REQUIRE(!std::is_copy_assignable_v<expected<not_copy_assignable_t, std::string>>);
-    REQUIRE(!std::is_copy_assignable_v<expected<not_copy_constructible_t, std::string>>);
+    REQUIRE(!std::is_copy_assignable_v<vien::expected<not_copy_assignable_t, std::string>>);
+    REQUIRE(!std::is_copy_assignable_v<vien::expected<not_copy_constructible_t, std::string>>);
 
-    REQUIRE(!std::is_copy_assignable_v<expected<std::string, not_copy_assignable_t>>);
-    REQUIRE(!std::is_copy_assignable_v<expected<std::string, not_copy_constructible_t>>);
+    REQUIRE(!std::is_copy_assignable_v<vien::expected<std::string, not_copy_assignable_t>>);
+    REQUIRE(!std::is_copy_assignable_v<vien::expected<std::string, not_copy_constructible_t>>);
 
     /* Either T or E must be nothrow constructible */
-    REQUIRE(!std::is_copy_assignable_v<expected<move_ctor_may_throw_t, move_ctor_may_throw_t>>);
+    REQUIRE(!std::is_copy_assignable_v<vien::expected<move_ctor_may_throw_t, move_ctor_may_throw_t>>);
 
-    REQUIRE(std::is_copy_assignable_v<expected<void, std::string>>);
-    REQUIRE(std::is_copy_assignable_v<expected<int, std::string>>);
+    REQUIRE(std::is_copy_assignable_v<vien::expected<void, std::string>>);
+    REQUIRE(std::is_copy_assignable_v<vien::expected<int, std::string>>);
 }
 
 TEMPLATE_TEST_CASE("Copy assignment correct when T is not void and bool(lhs) == bool(rhs)", "[expected][assignment][copy]", int, std::string) {
@@ -57,8 +57,8 @@ TEMPLATE_TEST_CASE("Copy assignment correct when T is not void and bool(lhs) == 
                 return "e" + std::to_string(int_generator());
         };
 
-        expected<TestType, int> e1(instance_generator());
-        expected<TestType, int> e2(instance_generator());
+        vien::expected<TestType, int> e1(instance_generator());
+        vien::expected<TestType, int> e2(instance_generator());
 
         REQUIRE(e1.value() != e2.value());
         e2 = e1;
@@ -73,14 +73,14 @@ TEMPLATE_TEST_CASE("Copy assignment correct when T is not void and bool(lhs) == 
     }
 
     SECTION("Neither lhs nor rhs has value") {
-        unexpected<double> u1(20.0);
-        unexpected<double> u2(30.0);
+        vien::unexpected<double> u1(20.0);
+        vien::unexpected<double> u2(30.0);
 
-        expected<TestType, double> e1(u1);
-        expected<TestType, double> e2(u2);
+        vien::expected<TestType, double> e1(u1);
+        vien::expected<TestType, double> e2(u2);
 
-        REQUIRE( THROWS(e1.value(), bad_expected_access<double>) );
-        REQUIRE( THROWS(e2.value(), bad_expected_access<double>) );
+        REQUIRE( THROWS(e1.value(), vien::bad_expected_access<double>) );
+        REQUIRE( THROWS(e2.value(), vien::bad_expected_access<double>) );
 
         REQUIRE(e1.error() != e2.error());
 
@@ -96,8 +96,8 @@ TEMPLATE_TEST_CASE("Copy assignment correct when T is not void and bool(lhs) == 
 
 TEST_CASE("Copy assignment correct when T is void and bool(lhs) == bool(rhs)", "[expected][assignment][copy]") {
     SECTION("Both lhs and rhs has value") {
-        expected<void, int> e1{};
-        expected<void, int> e2{};
+        vien::expected<void, int> e1{};
+        vien::expected<void, int> e2{};
 
         REQUIRE(bool(e1) == bool(e2));
         e2 = e1;
@@ -112,14 +112,14 @@ TEST_CASE("Copy assignment correct when T is void and bool(lhs) == bool(rhs)", "
     }
 
     SECTION("Neither lhs nor rhs has value") {
-        unexpected<double> u1(20.0);
-        unexpected<double> u2(30.0);
+        vien::unexpected<double> u1(20.0);
+        vien::unexpected<double> u2(30.0);
 
-        expected<void, double> e1(u1);
-        expected<void, double> e2(u2);
+        vien::expected<void, double> e1(u1);
+        vien::expected<void, double> e2(u2);
 
-        REQUIRE( THROWS(e1.value(), bad_expected_access<double>) );
-        REQUIRE( THROWS(e2.value(), bad_expected_access<double>) );
+        REQUIRE( THROWS(e1.value(), vien::bad_expected_access<double>) );
+        REQUIRE( THROWS(e2.value(), vien::bad_expected_access<double>) );
 
         REQUIRE(e1.error() != e2.error());
 
@@ -134,18 +134,18 @@ TEST_CASE("Copy assignment correct when T is void and bool(lhs) == bool(rhs)", "
 }
 
 TEST_CASE("Copy assignment correct when T is not void and bool(lhs) != bool(rhs)", "[expected][assignment][copy]") {
-    unexpected<int> u{30};
+    vien::unexpected<int> u{30};
 
-    expected<double, int> e1(u);
-    expected<double, int> e2(20);
+    vien::expected<double, int> e1(u);
+    vien::expected<double, int> e2(20);
 
-    REQUIRE( THROWS(e1.value(), bad_expected_access<int>) );
+    REQUIRE( THROWS(e1.value(), vien::bad_expected_access<int>) );
     REQUIRE( !THROWS_ANY(e2.value()) );
     REQUIRE(bool(e1) != bool(e2));
 
     SECTION("Assignment when bool(lhs) == true and bool(rhs) == false") {
         e2 = e1;
-        REQUIRE( THROWS(e2.value(), bad_expected_access<int>) );
+        REQUIRE( THROWS(e2.value(), vien::bad_expected_access<int>) );
         REQUIRE(bool(e2) == bool(e1));
         REQUIRE(e2.error() == e1.error());
     }
@@ -159,18 +159,18 @@ TEST_CASE("Copy assignment correct when T is not void and bool(lhs) != bool(rhs)
 }
 
 TEST_CASE("Copy assignment correct when T is void and bool(lhs) != bool(rhs)", "[expected][assignment][copy]") {
-    unexpected<int> u{30};
+    vien::unexpected<int> u{30};
 
-    expected<void, int> e1(u);
-    expected<void, int> e2{};
+    vien::expected<void, int> e1(u);
+    vien::expected<void, int> e2{};
 
-    REQUIRE( THROWS(e1.value(), bad_expected_access<int>) );
+    REQUIRE( THROWS(e1.value(), vien::bad_expected_access<int>) );
     REQUIRE( !THROWS_ANY(e2.value()) );
     REQUIRE(bool(e1) != bool(e2));
 
     SECTION("Assignment when bool(lhs) == true and bool(rhs) == false") {
         e2 = e1;
-        REQUIRE( THROWS(e2.value(), bad_expected_access<int>) );
+        REQUIRE( THROWS(e2.value(), vien::bad_expected_access<int>) );
         REQUIRE(!bool(e2));
         REQUIRE(bool(e2) == bool(e1));
         REQUIRE(e2.error() == e1.error());
@@ -188,12 +188,12 @@ TEST_CASE("Copy assignment satisfies strong exception guarantee", "[expected][as
     nth_instance_throws_on_creation_t<2>::reset_instance_count();
 
     SECTION("Assignment where bool(lhs) == false and bool(rhs) == true") {
-        unexpected<int> u(5);
+        vien::unexpected<int> u(5);
         nth_instance_throws_on_creation_t<2> ni{5};
-        expected<nth_instance_throws_on_creation_t<2>, int> e1(u);
-        expected<nth_instance_throws_on_creation_t<2>, int> e2(std::move(ni));
+        vien::expected<nth_instance_throws_on_creation_t<2>, int> e1(u);
+        vien::expected<nth_instance_throws_on_creation_t<2>, int> e2(std::move(ni));
         REQUIRE( THROWS(e1 = e2, std::runtime_error) );
-        REQUIRE( THROWS(e1.value(), bad_expected_access<int>) );
+        REQUIRE( THROWS(e1.value(), vien::bad_expected_access<int>) );
         REQUIRE( !THROWS_ANY(e2.value()) );
         REQUIRE(e1.error() == u.value());
         REQUIRE(e2.value().i == ni.i);
@@ -203,9 +203,9 @@ TEST_CASE("Copy assignment satisfies strong exception guarantee", "[expected][as
     SECTION("Assignment where bool(lhs) == true and bool(rhs) == true") {
         int ni_val = 5;
         nth_instance_throws_on_creation_t<2> ni{ni_val};
-        unexpected<nth_instance_throws_on_creation_t<2>> u(std::move(ni));
-        expected<int, nth_instance_throws_on_creation_t<2>> e1(1);
-        expected<int, nth_instance_throws_on_creation_t<2>> e2(std::move(u));
+        vien::unexpected<nth_instance_throws_on_creation_t<2>> u(std::move(ni));
+        vien::expected<int, nth_instance_throws_on_creation_t<2>> e1(1);
+        vien::expected<int, nth_instance_throws_on_creation_t<2>> e2(std::move(u));
         REQUIRE( THROWS(e1 = e2, std::runtime_error) );
         REQUIRE( !THROWS_ANY(e1.value()) );
 
@@ -213,7 +213,7 @@ TEST_CASE("Copy assignment satisfies strong exception guarantee", "[expected][as
          * throws a runtime_error if the count is not reset */
         nth_instance_throws_on_creation_t<2>::reset_instance_count();
 
-        REQUIRE( THROWS(e2.value(), bad_expected_access<void>) );
+        REQUIRE( THROWS(e2.value(), vien::bad_expected_access<void>) );
         REQUIRE(e1.value() == 1);
         REQUIRE(e2.error().i == ni_val);
         nth_instance_throws_on_creation_t<2>::reset_instance_count();
@@ -247,22 +247,22 @@ TEST_CASE("Move assignment disallowed when appropriate", "[expected][assignment]
         }
     };
         
-    REQUIRE(!std::is_move_assignable_v<expected<void, move_ctor_may_throw_t>>);
-    REQUIRE(!std::is_move_assignable_v<expected<void, move_assign_may_throw_t>>);
-    REQUIRE(!std::is_move_assignable_v<expected<not_move_constructible_t, int>>);
-    REQUIRE(!std::is_move_assignable_v<expected<not_move_assignable_t, int>>);
-    REQUIRE(!std::is_move_assignable_v<expected<not_move_assignable_t, move_ctor_may_throw_t>>);
-    REQUIRE(!std::is_move_assignable_v<expected<not_move_constructible_t, 
-                                                move_ctor_may_throw_t>>);
-    REQUIRE(!std::is_move_assignable_v<expected<not_move_constructible_t, 
-                                                move_assign_may_throw_t>>);
-    REQUIRE(!std::is_move_assignable_v<expected<not_move_constructible_t, 
-                                                move_assign_may_throw_t>>);
+    REQUIRE(!std::is_move_assignable_v<vien::expected<void, move_ctor_may_throw_t>>);
+    REQUIRE(!std::is_move_assignable_v<vien::expected<void, move_assign_may_throw_t>>);
+    REQUIRE(!std::is_move_assignable_v<vien::expected<not_move_constructible_t, int>>);
+    REQUIRE(!std::is_move_assignable_v<vien::expected<not_move_assignable_t, int>>);
+    REQUIRE(!std::is_move_assignable_v<vien::expected<not_move_assignable_t, move_ctor_may_throw_t>>);
+    REQUIRE(!std::is_move_assignable_v<vien::expected<not_move_constructible_t, 
+                                                      move_ctor_may_throw_t>>);
+    REQUIRE(!std::is_move_assignable_v<vien::expected<not_move_constructible_t, 
+                                                      move_assign_may_throw_t>>);
+    REQUIRE(!std::is_move_assignable_v<vien::expected<not_move_constructible_t, 
+                                                      move_assign_may_throw_t>>);
 
-    REQUIRE(std::is_move_assignable_v<expected<void, int>>);
-    REQUIRE(std::is_move_assignable_v<expected<void, std::string>>);
-    REQUIRE(std::is_move_assignable_v<expected<int, double>>);
-    REQUIRE(std::is_move_assignable_v<expected<int, std::string>>);
+    REQUIRE(std::is_move_assignable_v<vien::expected<void, int>>);
+    REQUIRE(std::is_move_assignable_v<vien::expected<void, std::string>>);
+    REQUIRE(std::is_move_assignable_v<vien::expected<int, double>>);
+    REQUIRE(std::is_move_assignable_v<vien::expected<int, std::string>>);
 }
 
 TEST_CASE("Move assignment noexcept if appropriate", "[expected][assignment][move][noexcept]") {
@@ -287,17 +287,17 @@ TEST_CASE("Move assignment noexcept if appropriate", "[expected][assignment][mov
         };
     };
 
-    REQUIRE(std::is_nothrow_move_assignable_v<expected<int, nothrow_t>>);
-    REQUIRE(std::is_nothrow_move_assignable_v<expected<int, double>>);
-    REQUIRE(std::is_nothrow_move_assignable_v<expected<double, double>>);
-    REQUIRE(std::is_nothrow_move_assignable_v<expected<nothrow_t, int>>);
+    REQUIRE(std::is_nothrow_move_assignable_v<vien::expected<int, nothrow_t>>);
+    REQUIRE(std::is_nothrow_move_assignable_v<vien::expected<int, double>>);
+    REQUIRE(std::is_nothrow_move_assignable_v<vien::expected<double, double>>);
+    REQUIRE(std::is_nothrow_move_assignable_v<vien::expected<nothrow_t, int>>);
 
-    REQUIRE(!std::is_nothrow_move_assignable_v<expected<void, nothrow_t>>);
-    REQUIRE(!std::is_nothrow_move_assignable_v<expected<void, int>>);
-    REQUIRE(!std::is_nothrow_move_assignable_v<expected<move_assign_may_throw_t, int>>);
-    REQUIRE(!std::is_nothrow_move_assignable_v<expected<move_ctor_may_throw_t, int>>);
-    REQUIRE(!std::is_nothrow_move_assignable_v<expected<int, move_assign_may_throw_t>>);
-    REQUIRE(!std::is_nothrow_move_assignable_v<expected<int, move_ctor_may_throw_t>>);
+    REQUIRE(!std::is_nothrow_move_assignable_v<vien::expected<void, nothrow_t>>);
+    REQUIRE(!std::is_nothrow_move_assignable_v<vien::expected<void, int>>);
+    REQUIRE(!std::is_nothrow_move_assignable_v<vien::expected<move_assign_may_throw_t, int>>);
+    REQUIRE(!std::is_nothrow_move_assignable_v<vien::expected<move_ctor_may_throw_t, int>>);
+    REQUIRE(!std::is_nothrow_move_assignable_v<vien::expected<int, move_assign_may_throw_t>>);
+    REQUIRE(!std::is_nothrow_move_assignable_v<vien::expected<int, move_ctor_may_throw_t>>);
 }
 
 
@@ -315,8 +315,8 @@ TEMPLATE_TEST_CASE("Move assignment correct when T is not void and bool(lhs) == 
         };
         TestType t1 = instance_generator();
         TestType t2 = instance_generator();
-        expected<TestType, int> e1(t1);
-        expected<TestType, int> e2(t2);
+        vien::expected<TestType, int> e1(t1);
+        vien::expected<TestType, int> e2(t2);
 
         REQUIRE(e1.value() != e2.value());
         e2 = std::move(e1);
@@ -327,14 +327,14 @@ TEMPLATE_TEST_CASE("Move assignment correct when T is not void and bool(lhs) == 
     }
 
     SECTION("Neither lhs nor rhs has value") {
-        unexpected<double> u1(20.0);
-        unexpected<double> u2(30.0);
+        vien::unexpected<double> u1(20.0);
+        vien::unexpected<double> u2(30.0);
 
-        expected<TestType, double> e1(u1);
-        expected<TestType, double> e2(u2);
+        vien::expected<TestType, double> e1(u1);
+        vien::expected<TestType, double> e2(u2);
 
-        REQUIRE( THROWS(e1.value(), bad_expected_access<double>) );
-        REQUIRE( THROWS(e2.value(), bad_expected_access<double>) );
+        REQUIRE( THROWS(e1.value(), vien::bad_expected_access<double>) );
+        REQUIRE( THROWS(e2.value(), vien::bad_expected_access<double>) );
 
         REQUIRE(e1.error() != e2.error());
 
@@ -346,8 +346,8 @@ TEMPLATE_TEST_CASE("Move assignment correct when T is not void and bool(lhs) == 
 
 TEST_CASE("Move assignment correct when T is void and bool(lhs) == bool(rhs)", "[expected][assignment][move]") {
     SECTION("Both lhs and rhs has value") {
-        expected<void, int> e1{};
-        expected<void, int> e2{};
+        vien::expected<void, int> e1{};
+        vien::expected<void, int> e2{};
 
         REQUIRE(bool(e1) == bool(e2));
         e2 = std::move(e1);
@@ -358,14 +358,14 @@ TEST_CASE("Move assignment correct when T is void and bool(lhs) == bool(rhs)", "
     }
 
     SECTION("Neither lhs nor rhs has value") {
-        unexpected<double> u1(20.0);
-        unexpected<double> u2(30.0);
+        vien::unexpected<double> u1(20.0);
+        vien::unexpected<double> u2(30.0);
 
-        expected<void, double> e1(u1);
-        expected<void, double> e2(u2);
+        vien::expected<void, double> e1(u1);
+        vien::expected<void, double> e2(u2);
 
-        REQUIRE( THROWS(e1.value(), bad_expected_access<double>) );
-        REQUIRE( THROWS(e2.value(), bad_expected_access<double>) );
+        REQUIRE( THROWS(e1.value(), vien::bad_expected_access<double>) );
+        REQUIRE( THROWS(e2.value(), vien::bad_expected_access<double>) );
 
         REQUIRE(e1.error() != e2.error());
 
@@ -376,18 +376,18 @@ TEST_CASE("Move assignment correct when T is void and bool(lhs) == bool(rhs)", "
 }
 
 TEST_CASE("Move assignment correct when T is void and bool(lhs) != bool(rhs)", "[expected][assignment][move]") {
-    unexpected<int> u{30};
+    vien::unexpected<int> u{30};
 
-    expected<void, int> e1(u);
-    expected<void, int> e2{};
+    vien::expected<void, int> e1(u);
+    vien::expected<void, int> e2{};
 
-    REQUIRE( THROWS(e1.value(), bad_expected_access<int>) );
+    REQUIRE( THROWS(e1.value(), vien::bad_expected_access<int>) );
     REQUIRE( !THROWS_ANY(e2.value()) );
     REQUIRE(bool(e1) != bool(e2));
 
     SECTION("Assignment when bool(lhs) == true and bool(rhs) == false") {
         e2 = std::move(e1);
-        REQUIRE( THROWS(e2.value(), bad_expected_access<int>) );
+        REQUIRE( THROWS(e2.value(), vien::bad_expected_access<int>) );
         REQUIRE(!bool(e2));
         REQUIRE(bool(e2) == bool(e1));
         REQUIRE(e2.error() == u.value());
@@ -402,21 +402,21 @@ TEST_CASE("Move assignment correct when T is void and bool(lhs) != bool(rhs)", "
 }
 
 TEST_CASE("Move assignment satisfies strong exception guarantee", "[expected][assignment][move]") {
-    unexpected<int> u(5);
+    vien::unexpected<int> u(5);
     throws_on_nth_move_t<1> ni{5};
-    expected<throws_on_nth_move_t<1>, int> e1(u);
-    expected<throws_on_nth_move_t<1>, int> e2(ni);
+    vien::expected<throws_on_nth_move_t<1>, int> e1(u);
+    vien::expected<throws_on_nth_move_t<1>, int> e2(ni);
     REQUIRE( THROWS(e1 = std::move(e2), std::runtime_error) );
-    REQUIRE( THROWS(e1.value(), bad_expected_access<int>) );
+    REQUIRE( THROWS(e1.value(), vien::bad_expected_access<int>) );
     REQUIRE( !THROWS_ANY(e2.value()) );
     REQUIRE(e1.error() == u.value());
     REQUIRE(e2.value().i == ni.i);
 }
 
 TEST_CASE("Unary forwarding assignment operator assigns correctly", "[expected][assignment][forwarding]") {
-    unexpected<int> u(1);
+    vien::unexpected<int> u(1);
 
-    expected<int, int> e(10);
+    vien::expected<int, int> e(10);
 
     e = 20;
     REQUIRE(bool(e));
@@ -424,28 +424,28 @@ TEST_CASE("Unary forwarding assignment operator assigns correctly", "[expected][
 
     e = u;
     REQUIRE(!bool(e));
-    REQUIRE( THROWS(e.value(), bad_expected_access<int>) );
+    REQUIRE( THROWS(e.value(), vien::bad_expected_access<int>) );
     REQUIRE(e.error() == u.value());
 }
 
 TEST_CASE("Unary forwarding assignment operator satisfies strong exception guarantee", "[expected][assignment][forwarding]") {
     nth_instance_throws_on_creation_t<2> ni(10);
 
-    unexpected<int> u(20);
-    expected<nth_instance_throws_on_creation_t<2>, int> e(u);
+    vien::unexpected<int> u(20);
+    vien::expected<nth_instance_throws_on_creation_t<2>, int> e(u);
     REQUIRE(!bool(e));
     REQUIRE( THROWS_ANY(e = ni) );
     REQUIRE(!bool(e));
     nth_instance_throws_on_creation_t<2>::reset_instance_count();
-    REQUIRE( THROWS(e.value(), bad_expected_access<int>) );
+    REQUIRE( THROWS(e.value(), vien::bad_expected_access<int>) );
     REQUIRE(e.error() == 20);
 
     nth_instance_throws_on_creation_t<2>::reset_instance_count();
 }
 
 TEST_CASE("unexpected lvalue assignment operator assigns correctly", "[expected][assignment][unexpected]") {
-    unexpected<int> u(10);
-    expected<double, int> e(unexpect, 8);
+    vien::unexpected<int> u(10);
+    vien::expected<double, int> e(unexpect, 8);
 
     REQUIRE(!bool(e));
 
@@ -470,8 +470,8 @@ TEST_CASE("unexpected lvalue assignment operator fulfills strong exception guara
         throws_on_copy_t& operator=(throws_on_copy_t const&) = default;
     };
 
-    unexpected<throws_on_copy_t> u(throws_on_copy_t{});
-    expected<int, throws_on_copy_t> e(unexpect, throws_on_copy_t{});
+    vien::unexpected<throws_on_copy_t> u(throws_on_copy_t{});
+    vien::expected<int, throws_on_copy_t> e(unexpect, throws_on_copy_t{});
 
     REQUIRE( THROWS(e = u, std::runtime_error) );
     REQUIRE(!bool(e));
@@ -484,9 +484,9 @@ TEST_CASE("unexpected lvalue assignment operator fulfills strong exception guara
 }
 
 TEST_CASE("unexpected rvalue assignment operator assigns correctly", "[expected][assignment][unexpected]") {
-    unexpected<int> u1(10);
-    unexpected<int> u2(20);
-    expected<double, int> e(unexpect, 8);
+    vien::unexpected<int> u1(10);
+    vien::unexpected<int> u2(20);
+    vien::expected<double, int> e(unexpect, 8);
 
     REQUIRE(!bool(e));
 
@@ -512,9 +512,9 @@ TEST_CASE("unexpected rvalue assignment operator fulfills strong exception guara
     };
 
     throws_on_move_t tom{};
-    unexpected<throws_on_move_t> u1(tom);
-    unexpected<throws_on_move_t> u2(tom);
-    expected<int, throws_on_move_t> e(unexpect, tom);
+    vien::unexpected<throws_on_move_t> u1(tom);
+    vien::unexpected<throws_on_move_t> u2(tom);
+    vien::expected<int, throws_on_move_t> e(unexpect, tom);
 
     REQUIRE( THROWS(e = std::move(u1), std::runtime_error) );
     REQUIRE(!bool(e));
@@ -527,7 +527,7 @@ TEST_CASE("unexpected rvalue assignment operator fulfills strong exception guara
 }
 
 TEST_CASE("expected<void,E>::emplace", "[expected][assignment][void]") {
-    expected<void, int> e{unexpect, 10};
+    vien::expected<void, int> e{unexpect, 10};
     REQUIRE(!bool(e));
     e.emplace();
     REQUIRE(bool(e));
@@ -535,7 +535,7 @@ TEST_CASE("expected<void,E>::emplace", "[expected][assignment][void]") {
 
 TEST_CASE("expected<T,E>::emplace(Args...)", "[expected][assignment]") {
     double d = 1.0;
-    expected<double, int> e(unexpect, 10);
+    vien::expected<double, int> e(unexpect, 10);
 
     REQUIRE(!bool(e));
 
@@ -549,7 +549,7 @@ TEST_CASE("expected<T,E>::emplace(initializer_list, Args...)", "[expected][assig
     std::initializer_list<int> il{1, 2, 3, 4, 5, 6};
     variadic_t v(il, 1, 2, 3);
 
-    expected<variadic_t, int> e(unexpect, 10);
+    vien::expected<variadic_t, int> e(unexpect, 10);
 
     REQUIRE(!bool(e));
 
