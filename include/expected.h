@@ -390,8 +390,70 @@ template <typename T>
 inline bool constexpr is_nothrow_move_constructible_or_void_v =
     is_nothrow_move_constructible_or_void<T>::value;
 
+template <typename T, typename... Args>
+struct enable_if_constructible : std::enable_if<std::is_constructible_v<T,Args...>> { };
+
+template <typename T, typename... Args>
+using enable_if_constructible_t = typename enable_if_constructible<T,Args...>::type;
+
+template <typename T, typename U>
+struct enable_if_convertible : std::enable_if<std::is_convertible_v<T,U>> { };
+
+template <typename T, typename U>
+using enable_if_convertible_t = typename enable_if_convertible<T,U>::type;
+
+/* True iff T can be constructed from Args... but Args... cannot be converted to T */
+template <typename T, typename... Args>
+struct enable_if_constructible_but_not_convertible
+    : std::enable_if<std::is_constructible_v<T,Args...> &&
+                    !std::is_convertible_v<Args...,T>> { };
+
+template <typename T, typename... Args>
+using enable_if_constructible_but_not_convertible_t =
+    typename enable_if_constructible_but_not_convertible<T,Args...>::type;
+
+template <typename T, typename... Args>
+struct enable_if_nothrow_constructible
+    : std::enable_if<std::is_nothrow_constructible_v<T, Args...>> { };
+
+template <typename T, typename... Args>
+using enable_if_nothrow_constructible_t =
+    typename enable_if_nothrow_constructible<T, Args...>::type;
+
+template <typename... Args>
+struct enable_if_empty_pack
+    : std::enable_if<sizeof...(Args) == 0> { };
+
+template <typename... Args>
+using enable_if_empty_pack_t = typename enable_if_empty_pack<Args...>::type;
+
+template <typename T>
+struct enable_if_swappable
+    : std::enable_if<std::is_swappable_v<T>> { };
+
+template <typename T>
+using enable_if_swappable_t = typename enable_if_swappable<T>::type;
+
+template <typename, typename = void>
+struct has_internal_swap : std::false_type { };
+
+template <typename T>
+struct has_internal_swap<T, std::enable_if_t<std::is_void_v<decltype(std::declval<T&>().swap(std::declval<T&>()))>>>
+    : std::true_type { };
+
+template <typename T>
+inline bool constexpr has_internal_swap_v = has_internal_swap<T>::value;
+
+template <typename T>
+struct enable_if_internally_swappable
+    : std::enable_if<has_internal_swap_v<T>> { };
+
+template <typename T>
+using enable_if_internally_swappable_t =
+    typename enable_if_internally_swappable<T>::type;
+
 template <typename T, typename E, typename U, typename G>
-struct expected_enable_copy_conversion
+struct expected_copy_conversion_available
     : std::bool_constant< std::is_constructible_v<T, U const&> &&
                          !std::is_constructible_v<T, expected<U,G>&> &&
                          !std::is_constructible_v<T, expected<U,G>&&> &&
@@ -412,27 +474,52 @@ struct expected_enable_copy_conversion
                          !std::is_convertible_v<expected<U,G> const&&, unexpected<E>>> { };
 
 template <typename E, typename G>
-struct expected_enable_copy_conversion<void, E, void, G> : std::true_type { };
+struct expected_copy_conversion_available<void, E, void, G> : std::true_type { };
 
 template <typename T, typename E, typename U, typename G>
-inline bool constexpr expected_enable_copy_conversion_v =
-    expected_enable_copy_conversion<T,E,U,G>::value;
+inline bool constexpr expected_copy_conversion_available_v =
+    expected_copy_conversion_available<T,E,U,G>::value;
 
 template <typename T, typename E, typename U, typename G>
-struct expected_enable_implicit_copy_conversion
+struct expected_implicit_copy_conversion_available
     : std::bool_constant<std::is_convertible_v<U const&, T> &&
                          std::is_convertible_v<G const&, E>> { };
 
 template <typename E, typename G>
-struct expected_enable_implicit_copy_conversion<void, E, void, G>
+struct expected_implicit_copy_conversion_available<void, E, void, G>
     : std::bool_constant<std::is_convertible_v<G const&, E>> { };
 
 template <typename T, typename E, typename U, typename G>
-inline bool constexpr expected_enable_implicit_copy_conversion_v =
-    expected_enable_implicit_copy_conversion<T,E,U,G>::value;
+inline bool constexpr expected_implicit_copy_conversion_available_v =
+    expected_implicit_copy_conversion_available<T,E,U,G>::value;
 
 template <typename T, typename E, typename U, typename G>
-struct expected_enable_move_conversion
+struct expected_enable_copy_conversion
+    : std::enable_if<expected_copy_conversion_available_v<T,E,U,G>> { };
+
+template <typename T, typename E, typename U, typename G>
+using expected_enable_copy_conversion_t =
+    typename expected_enable_copy_conversion<T,E,U,G>::type;
+
+template <typename T, typename E, typename U, typename G>
+struct expected_enable_implicit_copy_conversion
+    : std::enable_if<expected_implicit_copy_conversion_available_v<T,E,U,G>> { };
+
+template <typename T, typename E, typename U, typename G>
+using expected_enable_implicit_copy_conversion_t =
+    typename expected_enable_implicit_copy_conversion<T,E,U,G>::type;
+
+template <typename T, typename E, typename U, typename G>
+struct expected_enable_explicit_copy_conversion
+    : std::enable_if<expected_copy_conversion_available_v<T,E,U,G> &&
+                    !expected_implicit_copy_conversion_available_v<T,E,U,G>> { };
+
+template <typename T, typename E, typename U, typename G>
+using expected_enable_explicit_copy_conversion_t =
+    typename expected_enable_explicit_copy_conversion<T,E,U,G>::type;
+
+template <typename T, typename E, typename U, typename G>
+struct expected_move_conversion_available
     : std::bool_constant< std::is_constructible_v<T, U&&> &&
                          !std::is_constructible_v<T, expected<U,G>&> &&
                          !std::is_constructible_v<T, expected<U,G>&&> &&
@@ -453,44 +540,94 @@ struct expected_enable_move_conversion
                          !std::is_convertible_v<expected<U,G> const&&, unexpected<E>>> { };
 
 template <typename E, typename G>
-struct expected_enable_move_conversion<void, E, void, G> : std::true_type { };
+struct expected_move_conversion_available<void, E, void, G> : std::true_type { };
 
 template <typename T, typename E, typename U, typename G>
-inline bool constexpr expected_enable_move_conversion_v =
-    expected_enable_move_conversion<T,E,U,G>::value;
+inline bool constexpr expected_move_conversion_available_v =
+    expected_move_conversion_available<T,E,U,G>::value;
 
 /* Use for enabling non-explicit move constructor */
 template <typename T, typename E, typename U, typename G>
-struct expected_enable_implicit_move_conversion
+struct expected_implicit_move_conversion_available
     : std::bool_constant<std::is_convertible_v<U&&, T> &&
                          std::is_convertible_v<G&&, E>> { };
 
 template <typename E, typename G>
-struct expected_enable_implicit_move_conversion<void, E, void, G>
+struct expected_implicit_move_conversion_available<void, E, void, G>
     : std::bool_constant<std::is_convertible_v<G&&, E>> { };
 
 template <typename T, typename E, typename U, typename G>
-inline bool constexpr expected_enable_implicit_move_conversion_v =
-    expected_enable_implicit_move_conversion<T,E,U,G>::value;
+inline bool constexpr expected_implicit_move_conversion_available_v =
+    expected_implicit_move_conversion_available<T,E,U,G>::value;
+
+template <typename T, typename E, typename U, typename G>
+struct expected_enable_move_conversion
+    : std::enable_if<expected_move_conversion_available_v<T,E,U,G>> { };
+
+template <typename T, typename E, typename U, typename G>
+using expected_enable_move_conversion_t =
+    typename expected_enable_move_conversion<T,E,U,G>::type;
+
+template <typename T, typename E, typename U, typename G>
+struct expected_enable_implicit_move_conversion
+    : std::enable_if<expected_implicit_move_conversion_available_v<T,E,U,G>> { };
+
+template <typename T, typename E, typename U, typename G>
+using expected_enable_implicit_move_conversion_t =
+    typename expected_enable_implicit_move_conversion<T,E,U,G>::type;
+
+template <typename T, typename E, typename U, typename G>
+struct expected_enable_explicit_move_conversion
+    : std::enable_if<expected_move_conversion_available_v<T,E,U,G> &&
+                    !expected_implicit_move_conversion_available_v<T,E,U,G>> { };
+
+template <typename T, typename E, typename U, typename G>
+using expected_enable_explicit_move_conversion_t =
+    typename expected_enable_explicit_move_conversion<T,E,U,G>::type;
 
 template <typename T, typename E, typename U>
-struct expected_enable_forwarding_ref_ctor
+struct expected_forwarding_ref_ctor_available
     : std::bool_constant<std::is_constructible_v<T, U&&> &&
                         !std::is_same_v<remove_cvref_t<U>, in_place_t> &&
                         !std::is_same_v<expected<T, E>, remove_cvref_t<U>> &&
                         !std::is_same_v<unexpected<E>, remove_cvref_t<U>>> { };
 
 template <typename T, typename E, typename U>
-inline bool constexpr expected_enable_forwarding_ref_ctor_v =
-    expected_enable_forwarding_ref_ctor<T,E,U>::value;
+inline bool constexpr expected_forwarding_ref_ctor_available_v =
+    expected_forwarding_ref_ctor_available<T,E,U>::value;
 
 template <typename T, typename U>
-struct expected_enable_implicit_forwarding_ref_ctor
+struct expected_implicit_forwarding_ref_ctor_available
     : std::bool_constant<std::is_convertible_v<U&&, T>> { };
 
 template <typename T, typename U>
-inline bool constexpr expected_enable_implicit_forwarding_ref_ctor_v =
-    expected_enable_implicit_forwarding_ref_ctor<T,U>::value;
+inline bool constexpr expected_implicit_forwarding_ref_ctor_available_v =
+    expected_implicit_forwarding_ref_ctor_available<T,U>::value;
+
+template <typename T, typename E, typename U>
+struct expected_enable_forwarding_ref_ctor
+    : std::enable_if<expected_forwarding_ref_ctor_available_v<T,E,U>> { };
+
+template <typename T, typename E, typename U>
+using expected_enable_forwarding_ref_ctor_t =
+    typename expected_enable_forwarding_ref_ctor<T,E,U>::type;
+
+template <typename T, typename U>
+struct expected_enable_implicit_forwarding_ref_ctor
+    : std::enable_if<expected_implicit_forwarding_ref_ctor_available_v<T,U>> { };
+
+template <typename T, typename U>
+using expected_enable_implicit_forwarding_ref_ctor_t =
+    typename expected_enable_implicit_forwarding_ref_ctor<T,U>::type;
+
+template <typename T, typename E, typename U>
+struct expected_enable_explicit_forwarding_ref_ctor
+    : std::enable_if<expected_forwarding_ref_ctor_available_v<T,E,U> &&
+                    !expected_implicit_forwarding_ref_ctor_available_v<T,U>> { };
+
+template <typename T, typename E, typename U>
+using expected_enable_explicit_forwarding_ref_ctor_t =
+    typename expected_enable_explicit_forwarding_ref_ctor<T,E,U>::type;
 
 template <typename T, typename E>
 struct expected_enable_copy_assignment
@@ -528,7 +665,7 @@ inline bool constexpr expected_enable_move_assignment_v =
 
 /* Tested only when T is not void, hence no void check */
 template <typename T, typename E, typename U>
-struct expected_enable_unary_forwarding_assign
+struct expected_unary_forwarding_assign_available
     : std::bool_constant<!std::is_same_v<expected<T,E>, remove_cvref_t<U>> &&
                          !std::conjunction_v<std::is_scalar<T>,
                                              std::is_same<T, std::decay_t<U>>> &&
@@ -537,11 +674,19 @@ struct expected_enable_unary_forwarding_assign
                          std::is_nothrow_move_constructible_v<E>> { };
 
 template <typename T, typename E, typename U>
-inline bool constexpr expected_enable_unary_forwarding_assign_v =
-    expected_enable_unary_forwarding_assign<T,E,U>::value;
+inline bool constexpr expected_unary_forwarding_assign_available_v =
+    expected_unary_forwarding_assign_available<T,E,U>::value;
+
+template <typename T, typename E, typename U>
+struct expected_enable_unary_forwarding_assign
+    : std::enable_if<expected_unary_forwarding_assign_available_v<T,E,U>> { };
+
+template <typename T, typename E, typename U>
+using expected_enable_unary_forwarding_assign_t =
+    typename expected_enable_unary_forwarding_assign<T,E,U>::type;
 
 template <typename T, typename E>
-struct expected_enable_swap
+struct expected_swap_available
     : std::bool_constant<std::is_swappable_v<T&> &&
                          std::is_swappable_v<E&> &&
                          std::is_move_constructible_v<T> &&
@@ -550,14 +695,39 @@ struct expected_enable_swap
                          std::is_nothrow_move_constructible_v<E>)> { };
 
 template <typename E>
-struct expected_enable_swap<void,E>
+struct expected_swap_available<void,E>
     : std::is_swappable<E> { };
 
 template <typename T, typename E>
-inline bool constexpr expected_enable_swap_v = expected_enable_swap<T,E>::value;
+inline bool constexpr expected_swap_available_v = expected_swap_available<T,E>::value;
+
+template <typename T, typename E>
+struct expected_enable_swap
+    : std::enable_if<expected_swap_available_v<T,E>> { };
+
+template <typename T, typename E>
+using expected_enable_swap_t = typename expected_enable_swap<T,E>::type;
+
+template <typename E>
+struct expected_enable_unexpected_copy_assignment
+    : std::enable_if<std::is_nothrow_copy_constructible_v<E> &&
+                     std::is_copy_assignable_v<E>> { };
+
+template <typename E>
+using expected_enable_unexpected_copy_assignment_t =
+    typename expected_enable_unexpected_copy_assignment<E>::type;
+
+template <typename E>
+struct expected_enable_unexpected_move_assignment
+    : std::enable_if<std::is_nothrow_move_constructible_v<E> &&
+                     std::is_move_assignable_v<E>> { };
+
+template <typename E>
+using expected_enable_unexpected_move_assignment_t =
+    typename expected_enable_unexpected_move_assignment<E>::type;
 
 template <typename E, typename Err>
-struct unexpected_enable_copy_conversion
+struct unexpected_copy_conversion_available
     : std::bool_constant< std::is_constructible_v<E, Err const&> &&
                          !std::is_constructible_v<E, unexpected<Err>&> &&
                          !std::is_constructible_v<E, unexpected<Err>> &&
@@ -569,18 +739,44 @@ struct unexpected_enable_copy_conversion
                          !std::is_convertible_v<unexpected<Err> const, E>> { };
 
 template <typename E, typename Err>
-inline bool constexpr unexpected_enable_copy_conversion_v
-    = unexpected_enable_copy_conversion<E,Err>::value;
+inline bool constexpr unexpected_copy_conversion_available_v
+    = unexpected_copy_conversion_available<E,Err>::value;
 
 template <typename E, typename Err>
-using unexpected_enable_implicit_copy_conversion = std::is_convertible<Err const&, E>;
+struct unexpected_implicit_copy_conversion_available
+    : std::is_convertible<Err const&, E> { };
 
 template <typename E, typename Err>
-inline bool constexpr unexpected_enable_implicit_copy_conversion_v =
-    unexpected_enable_implicit_copy_conversion<E,Err>::value;
+inline bool constexpr unexpected_implicit_copy_conversion_available_v =
+    unexpected_implicit_copy_conversion_available<E,Err>::value;
 
 template <typename E, typename Err>
-struct unexpected_enable_move_conversion
+struct unexpected_enable_copy_conversion
+    : std::enable_if<unexpected_copy_conversion_available_v<E,Err>> { };
+
+template <typename E, typename Err>
+using unexpected_enable_copy_conversion_t =
+    typename unexpected_enable_copy_conversion<E,Err>::type;
+
+template <typename E, typename Err>
+struct unexpected_enable_implicit_copy_conversion
+    : std::enable_if<unexpected_implicit_copy_conversion_available_v<E,Err>> { };
+
+template <typename E, typename Err>
+using unexpected_enable_implicit_copy_conversion_t =
+    typename unexpected_enable_implicit_copy_conversion<E,Err>::type;
+
+template <typename E, typename Err>
+struct unexpected_enable_explicit_copy_conversion
+    : std::enable_if<unexpected_copy_conversion_available_v<E,Err> &&
+                    !unexpected_implicit_copy_conversion_available_v<E,Err>> { };
+
+template <typename E, typename Err>
+using unexpected_enable_explicit_copy_conversion_t =
+    typename unexpected_enable_explicit_copy_conversion<E,Err>::type;
+
+template <typename E, typename Err>
+struct unexpected_move_conversion_available
     : std::bool_constant< std::is_constructible_v<E, Err> &&
                          !std::is_constructible_v<E, unexpected<Err>&> &&
                          !std::is_constructible_v<E, unexpected<Err>> &&
@@ -592,29 +788,75 @@ struct unexpected_enable_move_conversion
                          !std::is_convertible_v<unexpected<Err> const, E>> { };
 
 template <typename E, typename Err>
-inline bool constexpr unexpected_enable_move_conversion_v =
-    unexpected_enable_move_conversion<E,Err>::value;
+inline bool constexpr unexpected_move_conversion_available_v =
+    unexpected_move_conversion_available<E,Err>::value;
 
 template <typename E, typename Err>
-using unexpected_enable_implicit_move_conversion = std::is_convertible<Err, E>;
+struct unexpected_implicit_move_conversion_available
+    : std::is_convertible<Err, E> { };
 
 template <typename E, typename Err>
-inline bool constexpr unexpected_enable_implicit_move_conversion_v =
-    unexpected_enable_implicit_move_conversion<E,Err>::value;
+inline bool constexpr unexpected_implicit_move_conversion_available_v =
+    unexpected_implicit_move_conversion_available<E,Err>::value;
 
 template <typename E, typename Err>
-using unexpected_enable_copy_assignment = std::is_assignable<E, Err const&>;
+struct unexpected_enable_move_conversion
+    : std::enable_if<unexpected_move_conversion_available_v<E, Err>> { };
 
 template <typename E, typename Err>
-inline bool constexpr unexpected_enable_copy_assignment_v =
-    unexpected_enable_copy_assignment<E,Err>::value;
+using unexpected_enable_move_conversion_t =
+    typename unexpected_enable_move_conversion<E, Err>::type;
 
 template <typename E, typename Err>
-using unexpected_enable_move_assignment = std::is_assignable<E, Err>;
+struct unexpected_enable_implicit_move_conversion
+    : std::enable_if<unexpected_implicit_move_conversion_available_v<E, Err>> { };
 
 template <typename E, typename Err>
-inline bool constexpr unexpected_enable_move_assignment_v =
-    unexpected_enable_move_assignment<E,Err>::value;
+using unexpected_enable_implicit_move_conversion_t
+    = typename unexpected_enable_implicit_move_conversion<E, Err>::type;
+
+template <typename E, typename Err>
+struct unexpected_enable_explicit_move_conversion
+    : std::enable_if<unexpected_move_conversion_available_v<E, Err> &&
+                    !unexpected_implicit_move_conversion_available_v<E, Err>> { };
+
+template <typename E, typename Err>
+using unexpected_enable_explicit_move_conversion_t =
+    typename unexpected_enable_explicit_move_conversion<E, Err>::type;
+
+
+
+template <typename E, typename Err>
+struct unexpected_copy_assignment_available
+    : std::is_assignable<E, Err const&> { };
+
+template <typename E, typename Err>
+inline bool constexpr unexpected_copy_assignment_available_v =
+    unexpected_copy_assignment_available<E,Err>::value;
+
+template <typename E, typename Err>
+struct unexpected_enable_copy_assignment
+    : std::enable_if<unexpected_copy_assignment_available_v<E, Err>> { };
+
+template <typename E, typename Err>
+using unexpected_enable_copy_assignment_t =
+    typename unexpected_enable_copy_assignment<E, Err>::type;
+
+template <typename E, typename Err>
+struct unexpected_move_assignment_available
+    : std::is_assignable<E, Err> { };
+
+template <typename E, typename Err>
+inline bool constexpr unexpected_move_assignment_available_v =
+    unexpected_move_assignment_available<E,Err>::value;
+
+template <typename E, typename Err>
+struct unexpected_enable_move_assignment
+    : std::enable_if<unexpected_move_assignment_available_v<E, Err>> { };
+
+template <typename E, typename Err>
+using unexpected_enable_move_assignment_t =
+    typename unexpected_enable_move_assignment<E, Err>::type;
 
 
 #ifdef VIEN_EXPECTED_EXTENDED
@@ -958,6 +1200,12 @@ struct is_container<T, std::void_t<decltype(std::begin(std::declval<T&>())),
 
 template <typename T>
 inline bool constexpr is_container_v = is_container<T>::value;
+
+template <typename T>
+struct enable_if_container : std::enable_if<is_container_v<T>> { };
+
+template <typename T>
+using enable_if_container_t = typename enable_if_container<T>::type;
 
 template <typename, typename = void>
 struct names_unary_push_back : std::false_type { };
@@ -1756,58 +2004,42 @@ class expected_interface_base : expected_move_assign_base<T,E> {
         expected_interface_base& operator=(expected_interface_base&&) = default;
 
         /* Conditionally explicit unexpected lvalue ctor */
-        template <typename G = E, typename EE = E,
-                  typename = std::enable_if_t<std::is_constructible_v<E, G const&>>,
-                  typename = std::enable_if_t<std::is_convertible_v<G const&, E>>>
+        template <typename G = E,
+                  expected_detail::enable_if_constructible_t<E, G const&>* = nullptr,
+                  expected_detail::enable_if_convertible_t<G const&, E>* = nullptr>
         constexpr expected_interface_base(unexpected<G> const& e);
 
-        template <typename G = E, typename EE = E,
-                  typename = std::enable_if_t<
-                      std::is_constructible_v<E, G const&> &&
-                     !std::is_convertible_v<G const&, E>
-                  >>
+        template <typename G = E,
+                  expected_detail::enable_if_constructible_but_not_convertible_t<E, G const&>* = nullptr>
         constexpr explicit expected_interface_base(unexpected<G> const& e);
 
         /* Conditionally explicit unexpected rvalue ctor */
-        template <typename G = E, typename EE = E,
-                  typename = std::enable_if_t<std::is_constructible_v<E, G&&>>,
-                  typename = std::enable_if_t<std::is_convertible_v<G&&, E>>>
+        template <typename G = E,
+                  expected_detail::enable_if_constructible_t<E, G&&>* = nullptr,
+                  expected_detail::enable_if_convertible_t<G&&, E>* = nullptr>
         constexpr expected_interface_base(unexpected<G>&& e)
                         noexcept(std::is_nothrow_constructible_v<E, G&&>);
 
-        template <typename G = E, typename EE = E,
-                  typename = std::enable_if_t<
-                      std::is_constructible_v<E, G&&> &&
-                     !std::is_convertible_v<G&&, E>
-                  >>
+        template <typename G = E,
+                  expected_detail::enable_if_constructible_but_not_convertible_t<E, G&&>* = nullptr>
         constexpr explicit expected_interface_base(unexpected<G>&& e)
                         noexcept(std::is_nothrow_constructible_v<E, G&&>);
 
         template <typename... Args,
-                  typename = std::enable_if_t<
-                      std::is_constructible_v<E, Args...>
-                  >>
+                  expected_detail::enable_if_constructible_t<E, Args...>* = nullptr>
         constexpr explicit expected_interface_base(unexpect_t, Args&&... args);
 
         template <typename U, typename... Args,
-                  typename = std::enable_if_t<
-                      std::is_constructible_v<E, std::initializer_list<U>&, Args...>
-                  >>
+                  expected_detail::enable_if_constructible_t<E, std::initializer_list<U>&, Args...>* = nullptr>
         constexpr explicit
             expected_interface_base(unexpect_t, std::initializer_list<U> il, Args&&... args);
 
         template <typename G = E, typename EE = E,
-                  typename = std::enable_if_t<
-                      std::is_nothrow_copy_constructible_v<EE> &&
-                      std::is_copy_assignable_v<EE>
-                  >>
+                  expected_detail::expected_enable_unexpected_copy_assignment_t<EE>* = nullptr>
         expected_interface_base& operator=(unexpected<G> const& e);
 
         template <typename G = E, typename EE = E,
-                  typename = std::enable_if_t<
-                      std::is_nothrow_move_constructible_v<EE> &&
-                      std::is_move_assignable_v<EE>
-                  >>
+                  expected_detail::expected_enable_unexpected_move_assignment_t<EE>* = nullptr>
         expected_interface_base& operator=(unexpected<G>&& e);
 
         constexpr explicit operator bool() const noexcept;
@@ -1853,42 +2085,50 @@ class expected_interface_base : expected_move_assign_base<T,E> {
 };
 
 template <typename T, typename E>
-template <typename G, typename, typename, typename>
+template <typename G,
+          expected_detail::enable_if_constructible_t<E, G const&>*,
+          expected_detail::enable_if_convertible_t<G const&, E>*>
 constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G> const& e)
     : base_t(no_init) {
     this->store_unexpect(e);
 }
 
 template <typename T, typename E>
-template <typename G, typename, typename>
+template <typename G,
+          expected_detail::enable_if_constructible_but_not_convertible_t<E, G const&>*>
 constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G> const& e)
     : base_t(no_init) {
     this->store_unexpect(e);
 }
 
 template <typename T, typename E>
-template <typename G, typename, typename, typename>
+template <typename G,
+          expected_detail::enable_if_constructible_t<E, G&&>*,
+          expected_detail::enable_if_convertible_t<G&&, E>*>
 constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G>&& e)
                 noexcept(std::is_nothrow_constructible_v<E, G&&>) : base_t(no_init) {
     this->store_unexpect(std::move(e));
 }
 
 template <typename T, typename E>
-template <typename G, typename, typename>
+template <typename G,
+          expected_detail::enable_if_constructible_but_not_convertible_t<E, G&&>*>
 constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G>&& e)
                 noexcept(std::is_nothrow_constructible_v<E, G&&>) : base_t(no_init) {
     this->store_unexpect(std::move(e));
 }
 
 template <typename T, typename E>
-template <typename... Args, typename>
+template <typename... Args,
+          expected_detail::enable_if_constructible_t<E, Args...>*>
 constexpr expected_interface_base<T,E>::expected_interface_base(unexpect_t, Args&&... args)
     : base_t(no_init) {
     this->store_unexpect(std::forward<Args>(args)...);
 }
 
 template <typename T, typename E>
-template <typename U, typename... Args, typename>
+template <typename U, typename... Args,
+          expected_detail::enable_if_constructible_t<E, std::initializer_list<U>&, Args...>*>
 constexpr expected_interface_base<T,E>::expected_interface_base(unexpect_t,
                 std::initializer_list<U> il, Args&&... args) : base_t(no_init) {
 
@@ -1896,7 +2136,8 @@ constexpr expected_interface_base<T,E>::expected_interface_base(unexpect_t,
 }
 
 template <typename T, typename E>
-template <typename G, typename, typename>
+template <typename G, typename EE,
+          expected_detail::expected_enable_unexpected_copy_assignment_t<EE>*>
 expected_interface_base<T,E>&
 expected_interface_base<T,E>::operator=(unexpected<G> const& e) {
     if(!bool(*this))
@@ -1913,7 +2154,8 @@ expected_interface_base<T,E>::operator=(unexpected<G> const& e) {
 }
 
 template <typename T, typename E>
-template <typename G, typename, typename>
+template <typename G, typename EE,
+          expected_detail::expected_enable_unexpected_move_assignment_t<EE>*>
 expected_interface_base<T,E>& expected_interface_base<T,E>::operator=(unexpected<G>&& e) {
     if(!bool(*this))
         this->internal_get_unexpect() = unexpected(std::move(e.internal_get_unexpect().value()));
@@ -2058,102 +2300,56 @@ class expected : public expected_detail::expected_interface_base<T,E> {
 
         /* Conditionally explicit perfect forwarding conversion ctor */
         template <typename U = T, typename TT = T, typename EE = E,
-                  typename = std::enable_if_t<
-                      expected_detail::
-                          expected_enable_forwarding_ref_ctor_v<TT, EE, U>
-                  >,
-                  typename = std::enable_if_t<
-                      expected_detail::
-                          expected_enable_implicit_forwarding_ref_ctor_v<TT, U>
-                  >>
+                  expected_detail::expected_enable_forwarding_ref_ctor_t<TT, EE, U>* = nullptr,
+                  expected_detail::expected_enable_implicit_forwarding_ref_ctor_t<TT, U>* = nullptr>
         constexpr expected(U&& v);
 
         template <typename U = T, typename TT = T, typename EE = E,
-                  typename = std::enable_if_t<
-                      expected_detail::
-                          expected_enable_forwarding_ref_ctor_v<TT, EE, U> &&
-                     !expected_detail::
-                          expected_enable_implicit_forwarding_ref_ctor_v<TT, U>
-                  >>
+                  expected_detail::expected_enable_explicit_forwarding_ref_ctor_t<TT, EE, U>* = nullptr>
         constexpr explicit expected(U&& v);
 
 
         /* Conditionally explicit conversion constructors */
         template <typename U, typename G, typename TT = T, typename EE = E,
-                  typename = std::enable_if_t<
-                      expected_detail::
-                          expected_enable_copy_conversion_v<TT, EE, U, G>
-                  >,
-                  typename = std::enable_if_t<
-                      expected_detail::
-                          expected_enable_implicit_copy_conversion_v<TT, EE, U, G>
-                  >>
-        constexpr expected(expected<U, G> const& rhs);
+                  expected_detail::expected_enable_copy_conversion_t<TT,EE,U,G>* = nullptr,
+                  expected_detail::expected_enable_implicit_copy_conversion_t<TT,EE,U,G>* = nullptr>
+        constexpr expected(expected<U,G> const& rhs);
 
         template <typename U, typename G, typename TT = T, typename EE = E,
-                  typename = std::enable_if_t<
-                      expected_detail::
-                          expected_enable_copy_conversion_v<TT, EE, U, G> &&
-                     !expected_detail::
-                          expected_enable_implicit_copy_conversion_v<TT, EE, U, G>
-                  >>
-        constexpr explicit expected(expected<U, G> const& rhs);
+                  expected_detail::expected_enable_explicit_copy_conversion_t<TT,EE,U,G>* = nullptr>
+        constexpr explicit expected(expected<U,G> const& rhs);
 
         template <typename U, typename G, typename TT = T, typename EE = E,
-                  typename = std::enable_if_t<
-                      expected_detail::
-                          expected_enable_move_conversion_v<TT, EE, U, G>
-                  >,
-                  typename = std::enable_if_t<
-                      expected_detail::
-                          expected_enable_implicit_move_conversion_v<TT, EE, U, G>
-                  >>
+                  expected_detail::expected_enable_move_conversion_t<TT,EE,U,G>* = nullptr,
+                  expected_detail::expected_enable_implicit_move_conversion_t<TT,EE,U,G>* = nullptr>
         constexpr expected(expected<U,G>&& rhs);
 
         template <typename U, typename G, typename TT = T, typename EE = E,
-                  typename = std::enable_if_t<
-                      expected_detail::
-                          expected_enable_move_conversion_v<TT, EE, U, G> &&
-                     !expected_detail::
-                          expected_enable_implicit_move_conversion_v<TT, EE, U, G>
-                  >>
-        constexpr explicit expected(expected<U, G>&& rhs);
+                  expected_detail::expected_enable_explicit_move_conversion_t<TT,EE,U,G>* = nullptr>
+        constexpr explicit expected(expected<U,G>&& rhs);
 
         template <typename... Args,
-                  typename = std::enable_if_t<
-                      std::is_constructible_v<T, Args...>
-                  >>
+                  expected_detail::enable_if_constructible_t<T, Args...>* = nullptr>
         constexpr explicit expected(in_place_t, Args&&... args);
 
         template <typename U, typename... Args,
-                  typename = std::enable_if_t<
-                      std::is_constructible_v<T, std::initializer_list<U>&, Args...>
-                  >>
+                  expected_detail::enable_if_constructible_t<T, std::initializer_list<U>&, Args...>* = nullptr>
         constexpr explicit expected(in_place_t, std::initializer_list<U> il, Args&&... args);
 
         template <typename U = T, typename TT = T, typename EE = E,
-                  typename = std::enable_if_t<
-                      expected_detail::
-                          expected_enable_unary_forwarding_assign_v<TT, EE, U>
-                   >>
+                  expected_detail::expected_enable_unary_forwarding_assign_t<TT,EE,U>* = nullptr>
         expected& operator=(U&& v);
 
         template <typename... Args,
-                  typename = std::enable_if_t<
-                      std::is_nothrow_constructible_v<T, Args...>
-                  >>
+                  expected_detail::enable_if_nothrow_constructible_t<T, Args...>* = nullptr>
         T& emplace(Args&&... args);
 
         template <typename U, typename... Args,
-                  typename = std::enable_if_t<
-                      std::is_nothrow_constructible_v<T, std::initializer_list<U>&, Args...>
-                  >>
+                  expected_detail::enable_if_nothrow_constructible_t<T, std::initializer_list<U>&, Args...>* = nullptr>
         T& emplace(std::initializer_list<U>& il, Args&&... args);
 
         template <typename TT = T, typename EE = E,
-                  typename = std::enable_if_t<
-                      expected_detail::expected_enable_swap_v<TT, EE>
-                  >>
+                  expected_detail::expected_enable_swap_t<TT,EE>* = nullptr>
         void swap(expected& rhs) noexcept(std::is_nothrow_move_constructible_v<T> &&
                                           std::is_nothrow_swappable_v<T> &&
                                           std::is_nothrow_move_constructible_v<E> &&
@@ -2209,30 +2405,22 @@ class expected : public expected_detail::expected_interface_base<T,E> {
              map(F&& f) const &&;
 
         template <typename F, typename TT = T,
-                  typename = std::enable_if_t<
-                      expected_detail::is_container_v<TT>
-                  >>
+                  expected_detail::enable_if_container_t<TT>* = nullptr>
         constexpr expected<expected_detail::rebind_container_t<T,F>, E>
             map_range(F&& f) &;
 
         template <typename F, typename TT = T,
-                  typename = std::enable_if_t<
-                      expected_detail::is_container_v<TT>
-                  >>
+                  expected_detail::enable_if_container_t<TT>* = nullptr>
         constexpr expected<expected_detail::rebind_container_t<T,F>, E>
             map_range(F&& f) const &;
 
         template <typename F, typename TT = T,
-                  typename = std::enable_if_t<
-                      expected_detail::is_container_v<TT>
-                  >>
+                  expected_detail::enable_if_container_t<TT>* = nullptr>
         constexpr expected<expected_detail::rebind_container_t<T,F>, E>
             map_range(F&& f) &&;
 
         template <typename F, typename TT = T,
-                  typename = std::enable_if_t<
-                      expected_detail::is_container_v<TT>
-                  >>
+                  expected_detail::enable_if_container_t<TT>* = nullptr>
         constexpr expected<expected_detail::rebind_container_t<T,F>, E>
             map_range(F&& f) const &&;
 
@@ -2279,20 +2467,25 @@ class expected : public expected_detail::expected_interface_base<T,E> {
 };
 
 template <typename T, typename E>
-template <typename U, typename, typename, typename, typename>
+template <typename U, typename TT, typename EE,
+          expected_detail::expected_enable_forwarding_ref_ctor_t<TT,EE,U>*,
+          expected_detail::expected_enable_implicit_forwarding_ref_ctor_t<TT,U>*>
 constexpr expected<T,E>::expected(U&& v) : base_t(expected_detail::no_init) {
     this->store_val(std::forward<U>(v));
 }
 
 template <typename T, typename E>
-template <typename U, typename, typename, typename>
+template <typename U, typename TT, typename EE,
+          expected_detail::expected_enable_explicit_forwarding_ref_ctor_t<TT,EE,U>*>
 constexpr expected<T,E>::expected(U&& v) : base_t(expected_detail::no_init) {
     this->store_val(std::forward<U>(v));
 }
 
 template <typename T, typename E>
-template <typename U, typename G, typename, typename, typename, typename>
-constexpr expected<T,E>::expected(expected<U, G> const& rhs)
+template <typename U, typename G, typename TT, typename EE,
+          expected_detail::expected_enable_copy_conversion_t<TT,EE,U,G>*,
+          expected_detail::expected_enable_implicit_copy_conversion_t<TT,EE,U,G>*>
+constexpr expected<T,E>::expected(expected<U,G> const& rhs)
     : base_t(expected_detail::no_init) {
     if(bool(rhs))
         this->store_val(rhs.value());
@@ -2301,8 +2494,9 @@ constexpr expected<T,E>::expected(expected<U, G> const& rhs)
 }
 
 template <typename T, typename E>
-template <typename U, typename G, typename, typename, typename>
-constexpr expected<T,E>::expected(expected<U, G> const& rhs)
+template <typename U, typename G, typename TT, typename EE,
+          expected_detail::expected_enable_explicit_copy_conversion_t<TT,EE,U,G>*>
+constexpr expected<T,E>::expected(expected<U,G> const& rhs)
     : base_t(expected_detail::no_init) {
     if(bool(rhs))
         this->store_val(rhs.value());
@@ -2311,8 +2505,10 @@ constexpr expected<T,E>::expected(expected<U, G> const& rhs)
 }
 
 template <typename T, typename E>
-template <typename U, typename G, typename, typename, typename, typename>
-constexpr expected<T,E>::expected(expected<U, G>&& rhs)
+template <typename U, typename G, typename TT, typename EE,
+          expected_detail::expected_enable_move_conversion_t<TT,EE,U,G>*,
+          expected_detail::expected_enable_implicit_move_conversion_t<TT,EE,U,G>*>
+constexpr expected<T,E>::expected(expected<U,G>&& rhs)
     : base_t(expected_detail::no_init) {
     if(bool(rhs))
         this->store_val(std::move(rhs.value()));
@@ -2321,8 +2517,9 @@ constexpr expected<T,E>::expected(expected<U, G>&& rhs)
 }
 
 template <typename T, typename E>
-template <typename U, typename G, typename, typename, typename>
-constexpr expected<T,E>::expected(expected<U, G>&& rhs)
+template <typename U, typename G, typename TT, typename EE,
+          expected_detail::expected_enable_explicit_move_conversion_t<TT,EE,U,G>*>
+constexpr expected<T,E>::expected(expected<U,G>&& rhs)
     : base_t(expected_detail::no_init) {
     if(bool(rhs))
         this->store_val(std::move(rhs.value()));
@@ -2331,21 +2528,24 @@ constexpr expected<T,E>::expected(expected<U, G>&& rhs)
 }
 
 template <typename T, typename E>
-template <typename... Args, typename>
+template <typename... Args,
+          expected_detail::enable_if_constructible_t<T, Args...>*>
 constexpr expected<T,E>::expected(in_place_t, Args&&... args)
     : base_t(expected_detail::no_init) {
     this->store_val(std::forward<Args>(args)...);
 }
 
 template <typename T, typename E>
-template <typename U, typename... Args, typename>
+template <typename U, typename... Args,
+          expected_detail::enable_if_constructible_t<T, std::initializer_list<U>&, Args...>*>
 constexpr expected<T,E>::expected(in_place_t, std::initializer_list<U> il, Args&&... args)
     : base_t(expected_detail::no_init) {
     this->store_val(il, std::forward<Args>(args)...);
 }
 
 template <typename T, typename E>
-template <typename U, typename, typename, typename>
+template <typename U, typename TT, typename EE,
+          expected_detail::expected_enable_unary_forwarding_assign_t<TT,EE,U>*>
 expected<T,E>& expected<T,E>::operator=(U&& v) {
     if(bool(*this))
         this->internal_get_value() = std::forward<U>(v);
@@ -2372,7 +2572,8 @@ expected<T,E>& expected<T,E>::operator=(U&& v) {
 }
 
 template <typename T, typename E>
-template <typename... Args, typename>
+template <typename... Args,
+          expected_detail::enable_if_nothrow_constructible_t<T, Args...>*>
 T& expected<T,E>::emplace(Args&&... args) {
     if(bool(*this))
         this->store_val(std::forward<Args>(args)...);
@@ -2403,7 +2604,8 @@ T& expected<T,E>::emplace(Args&&... args) {
 }
 
 template <typename T, typename E>
-template <typename U, typename... Args, typename>
+template <typename U, typename... Args,
+          expected_detail::enable_if_nothrow_constructible_t<T, std::initializer_list<U>&, Args...>*>
 T& expected<T,E>::emplace(std::initializer_list<U>& il, Args&&... args) {
     if(bool(*this))
         this->store_val(il, std::forward<Args>(args)...);
@@ -2435,7 +2637,8 @@ T& expected<T,E>::emplace(std::initializer_list<U>& il, Args&&... args) {
 }
 
 template <typename T, typename E>
-template <typename, typename, typename>
+template <typename TT, typename EE,
+          expected_detail::expected_enable_swap_t<TT,EE>*>
 void expected<T,E>::swap(expected& rhs) noexcept(std::is_nothrow_move_constructible_v<T> &&
                                                  std::is_nothrow_swappable_v<T> &&
                                                  std::is_nothrow_move_constructible_v<E> &&
@@ -2698,7 +2901,8 @@ expected<T,E>::map(F&& f) const && {
 }
 
 template <typename T, typename E>
-template <typename F, typename, typename>
+template <typename F, typename TT,
+          expected_detail::enable_if_container_t<TT>*>
 [[nodiscard]]
 constexpr expected<expected_detail::rebind_container_t<T,F>, E>
 expected<T,E>::map_range(F&& f) & {
@@ -2716,7 +2920,8 @@ expected<T,E>::map_range(F&& f) & {
 }
 
 template <typename T, typename E>
-template <typename F, typename, typename>
+template <typename F, typename TT,
+          expected_detail::enable_if_container_t<TT>*>
 [[nodiscard]]
 constexpr expected<expected_detail::rebind_container_t<T,F>, E>
 expected<T,E>::map_range(F&& f) const & {
@@ -2734,7 +2939,8 @@ expected<T,E>::map_range(F&& f) const & {
 }
 
 template <typename T, typename E>
-template <typename F, typename, typename>
+template <typename F, typename TT,
+          expected_detail::enable_if_container_t<TT>*>
 [[nodiscard]]
 constexpr expected<expected_detail::rebind_container_t<T,F>, E>
 expected<T,E>::map_range(F&& f) && {
@@ -2761,7 +2967,8 @@ expected<T,E>::map_range(F&& f) && {
 }
 
 template <typename T, typename E>
-template <typename F, typename, typename>
+template <typename F, typename TT,
+          expected_detail::enable_if_container_t<TT>*>
 [[nodiscard]]
 constexpr expected<expected_detail::rebind_container_t<T,F>, E>
 expected<T,E>::map_range(F&& f) const && {
@@ -2984,55 +3191,31 @@ class expected<void, E> : public expected_detail::expected_interface_base<void,E
 
         /* Conditionally explicit conversion constructors */
         template <typename U, typename G, typename TT = void, typename EE = E,
-                  typename = std::enable_if_t<
-                      expected_detail::
-                          expected_enable_copy_conversion_v<TT, EE, U, G>
-                  >,
-                  typename = std::enable_if_t<
-                      expected_detail::
-                          expected_enable_implicit_copy_conversion_v<TT, EE, U, G>
-                  >>
-        constexpr expected(expected<U, G> const& rhs);
+                  expected_detail::expected_enable_copy_conversion_t<TT,EE,U,G>* = nullptr,
+                  expected_detail::expected_enable_implicit_copy_conversion_t<TT,EE,U,G>* = nullptr>
+        constexpr expected(expected<U,G> const& rhs);
 
         template <typename U, typename G, typename TT = void, typename EE = E,
-                  typename = std::enable_if_t<
-                      expected_detail::
-                          expected_enable_copy_conversion_v<TT, EE, U, G> &&
-                     !expected_detail::
-                          expected_enable_implicit_copy_conversion_v<TT, EE, U, G>
-                  >>
-        constexpr explicit expected(expected<U, G> const& rhs);
+                  expected_detail::expected_enable_explicit_copy_conversion_t<TT,EE,U,G>* = nullptr>
+        constexpr explicit expected(expected<U,G> const& rhs);
 
         template <typename U, typename G, typename TT = void, typename EE = E,
-                  typename = std::enable_if_t<
-                      expected_detail::
-                          expected_enable_move_conversion_v<TT, EE, U, G>
-                  >,
-                  typename = std::enable_if_t<
-                      expected_detail::
-                          expected_enable_implicit_move_conversion_v<TT, EE, U, G>
-                  >>
+                  expected_detail::expected_enable_move_conversion_t<TT,EE,U,G>* = nullptr,
+                  expected_detail::expected_enable_implicit_move_conversion_t<TT,EE,U,G>* = nullptr>
         constexpr expected(expected<U,G>&& rhs);
 
         template <typename U, typename G, typename TT = void, typename EE = E,
-                  typename = std::enable_if_t<
-                      expected_detail::
-                          expected_enable_move_conversion_v<TT, EE, U, G> &&
-                     !expected_detail::
-                          expected_enable_implicit_move_conversion_v<TT, EE, U, G>
-                  >>
-        constexpr explicit expected(expected<U, G>&& rhs);
+                  expected_detail::expected_enable_explicit_move_conversion_t<TT,EE,U,G>* = nullptr>
+        constexpr explicit expected(expected<U,G>&& rhs);
 
         template <typename... Args,
-                  typename = std::enable_if_t<sizeof...(Args) == 0>>
+                  expected_detail::enable_if_empty_pack_t<Args...>* = nullptr>
         constexpr explicit expected(in_place_t, Args&&...);
 
         void emplace();
 
         template <typename TT = void, typename EE = E,
-                  typename = std::enable_if_t<
-                      expected_detail::expected_enable_swap_v<TT, EE>
-                  >>
+                  expected_detail::expected_enable_swap_t<TT,EE>* = nullptr>
         void swap(expected& rhs) noexcept(std::is_nothrow_move_constructible_v<E> &&
                                           std::is_nothrow_swappable_v<E>);
 
@@ -3085,8 +3268,10 @@ class expected<void, E> : public expected_detail::expected_interface_base<void,E
 };
 
 template <typename E>
-template <typename U, typename G, typename, typename, typename, typename>
-constexpr expected<void,E>::expected(expected<U, G> const& rhs)
+template <typename U, typename G, typename TT, typename EE,
+          expected_detail::expected_enable_copy_conversion_t<TT,EE,U,G>*,
+          expected_detail::expected_enable_implicit_copy_conversion_t<TT,EE,U,G>*>
+constexpr expected<void,E>::expected(expected<U,G> const& rhs)
     : base_t(expected_detail::no_init) {
     if(bool(rhs))
         this->store_val();
@@ -3095,8 +3280,9 @@ constexpr expected<void,E>::expected(expected<U, G> const& rhs)
 }
 
 template <typename E>
-template <typename U, typename G, typename, typename, typename>
-constexpr expected<void,E>::expected(expected<U, G> const& rhs)
+template <typename U, typename G, typename TT, typename EE,
+          expected_detail::expected_enable_explicit_copy_conversion_t<TT,EE,U,G>*>
+constexpr expected<void,E>::expected(expected<U,G> const& rhs)
     : base_t(expected_detail::no_init) {
     if(bool(rhs))
         this->store_val();
@@ -3105,8 +3291,10 @@ constexpr expected<void,E>::expected(expected<U, G> const& rhs)
 }
 
 template <typename E>
-template <typename U, typename G, typename, typename, typename, typename>
-constexpr expected<void,E>::expected(expected<U, G>&& rhs)
+template <typename U, typename G, typename TT, typename EE,
+          expected_detail::expected_enable_move_conversion_t<TT,EE,U,G>*,
+          expected_detail::expected_enable_implicit_move_conversion_t<TT,EE,U,G>*>
+constexpr expected<void,E>::expected(expected<U,G>&& rhs)
     : base_t(expected_detail::no_init) {
     if(bool(rhs))
         this->store_val();
@@ -3115,8 +3303,9 @@ constexpr expected<void,E>::expected(expected<U, G>&& rhs)
 }
 
 template <typename E>
-template <typename U, typename G, typename, typename, typename>
-constexpr expected<void,E>::expected(expected<U, G>&& rhs)
+template <typename U, typename G, typename TT, typename EE,
+          expected_detail::expected_enable_explicit_move_conversion_t<TT,EE,U,G>*>
+constexpr expected<void,E>::expected(expected<U,G>&& rhs)
     : base_t(expected_detail::no_init) {
     if(bool(rhs))
         this->store_val();
@@ -3125,7 +3314,8 @@ constexpr expected<void,E>::expected(expected<U, G>&& rhs)
 }
 
 template <typename E>
-template <typename... Args, typename>
+template <typename... Args,
+          expected_detail::enable_if_empty_pack_t<Args...>*>
 constexpr expected<void, E>::expected(in_place_t, Args&&...)
     : base_t(expected_detail::no_init) {
     this->store_val();
@@ -3140,7 +3330,8 @@ void expected<void,E>::emplace() {
 }
 
 template <typename E>
-template <typename, typename, typename>
+template <typename TT, typename EE,
+          expected_detail::expected_enable_swap_t<TT,EE>*>
 void expected<void,E>::swap(expected& rhs) noexcept(std::is_nothrow_move_constructible_v<E> &&
                                                     std::is_nothrow_swappable_v<E>) {
     using std::swap;
@@ -3449,17 +3640,16 @@ template <typename E>
 class unexpected {
     static_assert(!std::is_same_v<E, void>, "E cannot be void");
     public:
-        template <typename Err = E, typename =
-                std::enable_if_t<std::is_constructible_v<E, Err&&>>>
+        template <typename Err = E,
+                  expected_detail::enable_if_constructible_t<E, Err&&>* = nullptr>
         constexpr explicit unexpected(Err&& err);
 
-        template <typename... Args, typename =
-                std::enable_if_t<std::is_constructible_v<E, Args...>>>
+        template <typename... Args,
+                  expected_detail::enable_if_constructible_t<E, Args...>* = nullptr>
         constexpr explicit unexpected(in_place_t, Args&&... args);
 
-        template <typename U, typename... Args, typename =
-                std::enable_if_t<std::is_constructible_v<
-                        E, std::initializer_list<U>, Args...>>>
+        template <typename U, typename... Args,
+                  expected_detail::enable_if_constructible_t<E, std::initializer_list<U>, Args...>* = nullptr>
         constexpr explicit unexpected(in_place_t, std::initializer_list<U> il, Args&&... args);
 
         constexpr unexpected(unexpected const&) = default;
@@ -3468,46 +3658,28 @@ class unexpected {
         /* Implicit conversion ctor templates available iff is_convertible_v<Err, E>
          * is true. If not, the explicit versions are used */
         template <typename Err, typename EE = E,
-                  typename = std::enable_if_t<
-                      expected_detail::unexpected_enable_copy_conversion_v<EE, Err>
-                  >,
-                  typename = std::enable_if_t<
-                      expected_detail::unexpected_enable_implicit_copy_conversion_v<EE, Err>
-                  >>
+                  expected_detail::unexpected_enable_copy_conversion_t<EE, Err>* = nullptr,
+                  expected_detail::unexpected_enable_implicit_copy_conversion_t<EE, Err>* = nullptr>
         constexpr unexpected(unexpected<Err> const& e);
         template <typename Err, typename EE = E,
-                  typename = std::enable_if_t<
-                      expected_detail::unexpected_enable_copy_conversion_v<EE, Err> &&
-                     !expected_detail::unexpected_enable_implicit_copy_conversion_v<EE, Err>
-                  >>
+                  expected_detail::unexpected_enable_explicit_copy_conversion_t<EE, Err>* = nullptr>
         constexpr explicit unexpected(unexpected<Err> const& e);
 
         template <typename Err, typename EE = E,
-                  typename = std::enable_if_t<
-                      expected_detail::unexpected_enable_move_conversion_v<EE, Err>
-                  >,
-                  typename = std::enable_if_t<
-                      expected_detail::unexpected_enable_implicit_move_conversion_v<EE, Err>
-                  >>
+                  expected_detail::unexpected_enable_move_conversion_t<EE, Err>* = nullptr,
+                  expected_detail::unexpected_enable_implicit_move_conversion_t<EE, Err>* = nullptr>
         constexpr unexpected(unexpected<Err>&& e);
         template <typename Err, typename EE = E,
-                  typename = std::enable_if_t<
-                      expected_detail::unexpected_enable_move_conversion_v<EE, Err> &&
-                     !expected_detail::unexpected_enable_implicit_move_conversion_v<EE, Err>
-                  >>
+                  expected_detail::unexpected_enable_explicit_move_conversion_t<EE, Err>* = nullptr>
         constexpr explicit unexpected(unexpected<Err>&& e);
 
         constexpr unexpected& operator=(unexpected const&) = default;
         constexpr unexpected& operator=(unexpected&&) = default;
         template <typename Err = E, typename EE = E,
-                  typename = std::enable_if_t<
-                      expected_detail::unexpected_enable_copy_assignment_v<EE, Err>
-                  >>
+                  expected_detail::unexpected_enable_copy_assignment_t<EE, Err>* = nullptr>
         constexpr unexpected& operator=(unexpected<Err> const& e);
         template <typename Err = E, typename EE = E,
-                  typename = std::enable_if_t<
-                      expected_detail::unexpected_enable_move_assignment_v<EE, Err>
-                  >>
+                  expected_detail::unexpected_enable_move_assignment_t<EE, Err>* = nullptr>
         constexpr unexpected& operator=(unexpected<Err>&& e);
 
         constexpr E& value() & noexcept;
@@ -3516,9 +3688,7 @@ class unexpected {
         constexpr E const&& value() const && noexcept;
 
         template <typename EE = E,
-                  typename = std::enable_if_t<
-                      std::is_swappable_v<EE>
-                  >>
+                  expected_detail::enable_if_swappable_t<EE>* = nullptr>
         void swap(unexpected& other) noexcept(std::is_nothrow_swappable_v<E>);
 
         template <typename E1, typename E2>
@@ -3534,49 +3704,60 @@ template <typename E>
 unexpected(E) -> unexpected<E>;
 
 template <typename E>
-template <typename Err, typename>
+template <typename Err,
+          expected_detail::enable_if_constructible_t<E, Err&&>*>
 constexpr unexpected<E>::unexpected(Err&& err)
     : val_(std::forward<Err>(err)) { }
 
 template <typename E>
-template <typename... Args, typename>
+template <typename... Args,
+          expected_detail::enable_if_constructible_t<E, Args...>*>
 constexpr unexpected<E>::unexpected(in_place_t, Args&&... args)
     : val_(std::forward<Args>(args)...) { }
 
 template <typename E>
-template <typename U, typename... Args, typename>
+template <typename U, typename... Args,
+          expected_detail::enable_if_constructible_t<E, std::initializer_list<U>, Args...>*>
 constexpr unexpected<E>::unexpected(in_place_t, std::initializer_list<U> il, Args&&... args)
     : val_(il, std::forward<Args>(args)...) { }
 
 template <typename E>
-template <typename Err, typename, typename, typename>
+template <typename Err, typename EE,
+          expected_detail::unexpected_enable_copy_conversion_t<EE, Err>*,
+          expected_detail::unexpected_enable_implicit_copy_conversion_t<EE, Err>*>
 constexpr unexpected<E>::unexpected(unexpected<Err> const& e)
     : val_(e.value()) { }
 
 template <typename E>
-template <typename Err, typename, typename>
+template <typename Err, typename EE,
+          expected_detail::unexpected_enable_explicit_copy_conversion_t<EE, Err>*>
 constexpr unexpected<E>::unexpected(unexpected<Err> const& e)
     : val_(e.value()) { }
 
 template <typename E>
-template <typename Err, typename, typename, typename>
+template <typename Err, typename EE,
+          expected_detail::unexpected_enable_move_conversion_t<EE, Err>*,
+          expected_detail::unexpected_enable_implicit_move_conversion_t<EE, Err>*>
 constexpr unexpected<E>::unexpected(unexpected<Err>&& e)
     : val_(std::move(e.value())) { }
 
 template <typename E>
-template <typename Err, typename, typename>
+template <typename Err, typename EE,
+          expected_detail::unexpected_enable_explicit_move_conversion_t<EE, Err>*>
 constexpr unexpected<E>::unexpected(unexpected<Err>&& e)
     : val_(std::move(e.value())) { }
 
 template <typename E>
-template <typename Err, typename, typename>
+template <typename Err, typename EE,
+          expected_detail::unexpected_enable_copy_assignment_t<EE, Err>*>
 constexpr unexpected<E>& unexpected<E>::operator=(unexpected<Err> const& e) {
     val_ = e.value();
     return *this;
 }
 
 template <typename E>
-template <typename Err, typename, typename>
+template <typename Err, typename EE,
+          expected_detail::unexpected_enable_move_assignment_t<EE, Err>*>
 constexpr unexpected<E>& unexpected<E>::operator=(unexpected<Err>&& e) {
     val_ = std::move(e.value());
     return *this;
@@ -3603,7 +3784,8 @@ constexpr E const&& unexpected<E>::value() const && noexcept {
 }
 
 template <typename E>
-template <typename, typename>
+template <typename EE,
+          expected_detail::enable_if_swappable_t<EE>*>
 void unexpected<E>::swap(unexpected& other) noexcept(std::is_nothrow_swappable_v<E>) {
     using std::swap;
     swap(val_, other.val_);
@@ -3673,21 +3855,13 @@ char const* bad_expected_access<E>::what() const noexcept {
 namespace std {
 
 template <typename T1, typename E1,
-          typename = std::enable_if_t<
-              std::is_void_v<decltype(std::declval<vien::expected<T1,E1>&>()
-                                        .swap(std::declval<vien::expected<T1,E1>&>()))
-              >
-          >>
+          vien::expected_detail::enable_if_internally_swappable_t<vien::expected<T1,E1>>* = nullptr>
 void swap(vien::expected<T1,E1>& x, vien::expected<T1,E1>& y) noexcept(noexcept(x.swap(y))) {
     x.swap(y);
 }
 
 template <typename E1,
-          typename = std::enable_if_t<
-              std::is_void_v<decltype(std::declval<vien::unexpected<E1>>()
-                                        .swap(std::declval<vien::unexpected<E1>>()))
-              >
-          >>
+          vien::expected_detail::enable_if_internally_swappable_t<vien::unexpected<E1>>* = nullptr>
 void swap(vien::unexpected<E1>& x, vien::unexpected<E1>& y) noexcept(noexcept(x.swap(y))) {
     x.swap(y);
 }
