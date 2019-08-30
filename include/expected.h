@@ -31,7 +31,7 @@ class expected {
         using rebind = expected<U, error_type>;
 
         constexpr expected();
-        cosntexpr expected(expected const&);
+        constexpr expected(expected const&);
         constexpr expected(expected&&)
                         noexcept(std::is_nthrow_move_constructible_v<E> &&
                                 (std::is_void_v<T> || std::is_nothrow_move_constructible_v<T>))
@@ -102,9 +102,9 @@ class expected {
         constexpr T const&& value() const &&;
 
         constexpr E& error() &;
-        cosntexpr E const& error() const &;
+        constexpr E const& error() const &;
         constexpr E&& error() &&;
-        constexpr E const&& error() cosnt &&;
+        constexpr E const&& error() const &&;
 
         template <typename U>
         constexpr T value_or(U&&) const&;
