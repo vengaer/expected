@@ -2,7 +2,7 @@ CXX ?= g++
 BIN = expected_test
 
 SRC = $(wildcard tests/*.cc)
-OBJ := $(addsuffix .o, $(basename $(SRC)))
+OBJECTS := $(addsuffix .o, $(basename $(SRC)))
 
 INC = -I tests/ -I include
 
@@ -10,13 +10,13 @@ export CPPFLAGS
 
 CXXFLAGS := $(CXXFLAGS) -std=c++17 -Wall -Wextra -pedantic -Weffc++ -Wshadow -Wunknown-pragmas $(INC)
 
-$(BIN): $(OBJ)
+$(BIN): $(OBJECTS)
 	$(CXX) -o $@ $^ $(CXXFLAGS)
 
-.PHONY: clean run manual lint static_check
+.PHONY: clean run manual lint static_check msvc
 
 clean:
-	rm -f $(OBJ) $(BIN)
+	rm -f $(OBJECTS) $(BIN)
 
 run: $(BIN)
 	./$(BIN)
@@ -29,3 +29,9 @@ lint:
 
 static_check:
 	cppcheck --enable=all --inconclusive --language=c++ include/expected.h
+
+msvc: CXX := cl.exe
+msvc: OBJECTS := $(addsuffix obj, $(basename $(OBJ)))
+msvc: CXXFLAGS := /std:c++17 /W3 /I tests /I include /EHsc
+msvc:
+	$(CXX) $(CXXFLAGS) $(SRC) /link /out:$(BIN).exe
