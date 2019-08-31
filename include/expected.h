@@ -2421,7 +2421,7 @@ class expected : public expected_detail::expected_interface_base<T,E> {
             map(F&& f) &&;
         template <typename F>
         constexpr expected<std::decay_t<std::invoke_result_t<F,T>>, E>
-             map(F&& f) const &&;
+            map(F&& f) const &&;
 
         template <typename F, typename TT = T,
                   expected_detail::enable_if_container_t<TT>* = nullptr>
@@ -3107,6 +3107,9 @@ template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
 constexpr expected<T,E> expected<T,E>::and_then(F&& f) & {
+    static_assert(std::is_same_v<T, std::invoke_result_t<F,T&>>,
+                  "Callable F must return an instance of type T");
+
     return bool(*this) ?
             expected(std::invoke(std::forward<F>(f), **this)) :
             expected(unexpect, this->error());
@@ -3116,6 +3119,9 @@ template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
 constexpr expected<T,E> expected<T,E>::and_then(F&& f) const & {
+    static_assert(std::is_same_v<T, std::invoke_result_t<F,T const&>>,
+                  "Callable F must return an instance of type T");
+
     return bool(*this) ?
             expected(std::invoke(std::forward<F>(f), **this)) :
             expected(unexpect, this->error());
@@ -3125,6 +3131,9 @@ template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
 constexpr expected<T,E> expected<T,E>::and_then(F&& f) && {
+    static_assert(std::is_same_v<T, std::invoke_result_t<F,T&&>>,
+                  "Callable F must return an instance of type T");
+
     return bool(*this) ?
             expected(std::invoke(std::forward<F>(f), std::move(**this))) :
             expected(unexpect, std::move(this->error()));
@@ -3134,6 +3143,9 @@ template <typename T, typename E>
 template <typename F>
 [[nodiscard]]
 constexpr expected<T,E> expected<T,E>::and_then(F&& f) const && {
+    static_assert(std::is_same_v<T, std::invoke_result_t<F,T const&&>>,
+                  "Callable F must return an instance of type T");
+
     return bool(*this) ?
             expected(std::invoke(std::forward<F>(f), std::move(**this))) :
             expected(unexpect, std::move(this->error()));
