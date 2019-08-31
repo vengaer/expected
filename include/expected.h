@@ -3112,7 +3112,7 @@ constexpr expected<T,E> expected<T,E>::and_then(F&& f) & {
 
     return bool(*this) ?
             expected(std::invoke(std::forward<F>(f), **this)) :
-            expected(unexpect, this->error());
+            *this;
 }
 
 template <typename T, typename E>
@@ -3124,7 +3124,7 @@ constexpr expected<T,E> expected<T,E>::and_then(F&& f) const & {
 
     return bool(*this) ?
             expected(std::invoke(std::forward<F>(f), **this)) :
-            expected(unexpect, this->error());
+            *this;
 }
 
 template <typename T, typename E>
@@ -3136,7 +3136,7 @@ constexpr expected<T,E> expected<T,E>::and_then(F&& f) && {
 
     return bool(*this) ?
             expected(std::invoke(std::forward<F>(f), std::move(**this))) :
-            expected(unexpect, std::move(this->error()));
+            std::move(*this);
 }
 
 template <typename T, typename E>
@@ -3148,7 +3148,7 @@ constexpr expected<T,E> expected<T,E>::and_then(F&& f) const && {
 
     return bool(*this) ?
             expected(std::invoke(std::forward<F>(f), std::move(**this))) :
-            expected(unexpect, std::move(this->error()));
+            std::move(*this);
 }
 
 template <typename T, typename E>
