@@ -3627,7 +3627,7 @@ class expected<void const, E> : public expected<void, E> {
 template <typename E>
 class expected<void volatile, E> : public expected<void, E> {
     public:
-        using value_type = void const;
+        using value_type = void volatile;
         using error_type = E;
         using unexpected_type = unexpected<E>;
 
@@ -3645,7 +3645,7 @@ class expected<void volatile, E> : public expected<void, E> {
 template <typename E>
 class expected<void const volatile, E> : public expected<void, E> {
     public:
-        using value_type = void const;
+        using value_type = void const volatile;
         using error_type = E;
         using unexpected_type = unexpected<E>;
 
