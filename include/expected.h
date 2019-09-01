@@ -2691,8 +2691,6 @@ void expected<T,E>::swap(expected& rhs) noexcept(std::is_nothrow_move_constructi
             #endif
             try {
                 rhs.store_val(std::move(this->internal_get_value()));
-                this->internal_get_value().~T();
-                this->store_unexpect(std::move(tmp));
             }
             catch(...) {
                 rhs.store_unexpect(std::move(tmp));
@@ -2703,6 +2701,8 @@ void expected<T,E>::swap(expected& rhs) noexcept(std::is_nothrow_move_constructi
             #elif defined _MSC_VER
             #pragma warning( pop )
             #endif
+            this->internal_get_value().~T();
+            this->store_unexpect(std::move(tmp));
         }
         else if constexpr(std::is_nothrow_move_constructible_v<T>) {
             T tmp = std::move(this->internal_get_value());
