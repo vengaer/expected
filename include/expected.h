@@ -1588,13 +1588,13 @@ struct expected_construction_base : expected_base<T,E> {
     constexpr expected_construction_base() = default;
 
     template <typename... Args>
-    constexpr void store_val(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args&&...>) {
+    void store_val(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args&&...>) {
         new(std::addressof(this->val_)) T(std::forward<Args>(args)...);
         this->has_val_ = true;
     }
 
     template <typename... Args>
-    constexpr void store_unexpect(Args&&... args) noexcept(std::is_nothrow_constructible_v<E, Args&&...>) {
+    void store_unexpect(Args&&... args) noexcept(std::is_nothrow_constructible_v<E, Args&&...>) {
         new (std::addressof(this->unexpect_)) unexpected<E>(std::forward<Args>(args)...);
         this->has_val_ = false;
     }
@@ -1649,7 +1649,7 @@ struct expected_construction_base<void, E> : expected_base<void,E> {
     }
 
     template <typename... Args>
-    constexpr void store_unexpect(Args&&... args) noexcept(std::is_nothrow_constructible_v<E, Args&&...>) {
+    void store_unexpect(Args&&... args) noexcept(std::is_nothrow_constructible_v<E, Args&&...>) {
         new (std::addressof(this->unexpect_)) unexpected<E>(std::forward<Args>(args)...);
         this->has_val_ = false;
     }
@@ -1682,7 +1682,7 @@ template <typename T, typename E,
     bool = is_default_constructible_or_void_v<T>>
 struct expected_default_ctor_base : expected_construction_base<T,E> {
     using expected_construction_base<T,E>::expected_construction_base;
-    constexpr expected_default_ctor_base() = default;
+    expected_default_ctor_base() = default;
 };
 
 /* Delete default ctor iff T is neither default constructible nor void */
@@ -1711,9 +1711,9 @@ template <typename T, typename E>
 struct expected_copy_ctor_base<T, E, false, false>
     : expected_default_ctor_base<T,E> {
     using expected_default_ctor_base<T,E>::expected_default_ctor_base;
-    constexpr expected_copy_ctor_base() = default;
+    expected_copy_ctor_base() = default;
 
-    constexpr expected_copy_ctor_base(expected_copy_ctor_base const&) = delete;
+    expected_copy_ctor_base(expected_copy_ctor_base const&) = delete;
 };
 
 /* Partial specialization for when
@@ -1724,7 +1724,7 @@ template <typename T, typename E>
 struct expected_copy_ctor_base<T, E, true, false>
     : expected_default_ctor_base<T,E> {
     using expected_default_ctor_base<T,E>::expected_default_ctor_base;
-    constexpr expected_copy_ctor_base() = default;
+    expected_copy_ctor_base() = default;
 
     expected_copy_ctor_base(expected_copy_ctor_base const& rhs) {
         if(rhs.has_val_)
@@ -1741,7 +1741,7 @@ template <typename T, typename E>
 struct expected_copy_ctor_base<T, E, true, true>
     : expected_default_ctor_base<T,E> {
     using expected_default_ctor_base<T,E>::expected_default_ctor_base;
-    constexpr expected_copy_ctor_base() = default;
+    expected_copy_ctor_base() = default;
 
     constexpr expected_copy_ctor_base(expected_copy_ctor_base const& rhs) {
         if(rhs.has_val_)
@@ -1770,10 +1770,10 @@ template <typename T, typename E>
 struct expected_move_ctor_base<T, E, false, false>
     : expected_copy_ctor_base<T,E> {
     using expected_copy_ctor_base<T,E>::expected_copy_ctor_base;
-    constexpr expected_move_ctor_base() = default;
+    expected_move_ctor_base() = default;
 
-    constexpr expected_move_ctor_base(expected_move_ctor_base const&) = default;
-    constexpr expected_move_ctor_base(expected_move_ctor_base&&) = delete;
+    expected_move_ctor_base(expected_move_ctor_base const&) = default;
+    expected_move_ctor_base(expected_move_ctor_base&&) = delete;
 };
 
 /* Partial specialization for when
@@ -1785,9 +1785,9 @@ template <typename T, typename E>
 struct expected_move_ctor_base<T, E, true, false>
     : expected_copy_ctor_base<T,E> {
     using expected_copy_ctor_base<T,E>::expected_copy_ctor_base;
-    constexpr expected_move_ctor_base() = default;
+    expected_move_ctor_base() = default;
 
-    constexpr expected_move_ctor_base(expected_move_ctor_base const&) = default;
+    expected_move_ctor_base(expected_move_ctor_base const&) = default;
     expected_move_ctor_base(expected_move_ctor_base&& rhs)
         noexcept(is_nothrow_move_constructible_or_void_v<T> &&
                  std::is_nothrow_move_constructible_v<E>) {
@@ -1805,9 +1805,9 @@ template <typename T, typename E>
 struct expected_move_ctor_base<T, E, true, true>
     : expected_copy_ctor_base<T,E> {
     using expected_copy_ctor_base<T,E>::expected_copy_ctor_base;
-    constexpr expected_move_ctor_base() = default;
+    expected_move_ctor_base() = default;
 
-    constexpr expected_move_ctor_base(expected_move_ctor_base const&) = default;
+    expected_move_ctor_base(expected_move_ctor_base const&) = default;
     constexpr expected_move_ctor_base(expected_move_ctor_base&& rhs)
         noexcept(is_nothrow_move_constructible_or_void_v<T> &&
                  std::is_nothrow_move_constructible_v<E>) {
@@ -1830,20 +1830,20 @@ struct expected_copy_assign_base<T, E, false>
     : expected_move_ctor_base<T,E> {
 
     using expected_move_ctor_base<T,E>::expected_move_ctor_base;
-    constexpr expected_copy_assign_base() = default;
-    constexpr expected_copy_assign_base(expected_copy_assign_base const&) = default;
-    constexpr expected_copy_assign_base(expected_copy_assign_base&&) = default;
+    expected_copy_assign_base() = default;
+    expected_copy_assign_base(expected_copy_assign_base const&) = default;
+    expected_copy_assign_base(expected_copy_assign_base&&) = default;
 
-    constexpr expected_copy_assign_base& operator=(expected_copy_assign_base const&) = delete;
+    expected_copy_assign_base& operator=(expected_copy_assign_base const&) = delete;
 };
 
 template <typename T, typename E>
 struct expected_copy_assign_base<T, E, true>
     : expected_move_ctor_base<T,E> {
     using expected_move_ctor_base<T,E>::expected_move_ctor_base;
-    constexpr expected_copy_assign_base() = default;
-    constexpr expected_copy_assign_base(expected_copy_assign_base const&) = default;
-    constexpr expected_copy_assign_base(expected_copy_assign_base&&) = default;
+    expected_copy_assign_base() = default;
+    expected_copy_assign_base(expected_copy_assign_base const&) = default;
+    expected_copy_assign_base(expected_copy_assign_base&&) = default;
 
     expected_copy_assign_base& operator=(expected_copy_assign_base const& rhs) {
 
@@ -1923,12 +1923,12 @@ template <typename T, typename E>
 struct expected_move_assign_base<T,E,false>
     : expected_copy_assign_base<T,E> {
     using expected_copy_assign_base<T,E>::expected_copy_assign_base;
-    constexpr expected_move_assign_base() = default;
-    constexpr expected_move_assign_base(expected_move_assign_base const&) = default;
-    constexpr expected_move_assign_base(expected_move_assign_base&&) = default;
+    expected_move_assign_base() = default;
+    expected_move_assign_base(expected_move_assign_base const&) = default;
+    expected_move_assign_base(expected_move_assign_base&&) = default;
 
-    constexpr expected_move_assign_base& operator=(expected_move_assign_base const&) = default;
-    constexpr expected_move_assign_base& operator=(expected_move_assign_base&&) = delete;
+    expected_move_assign_base& operator=(expected_move_assign_base const&) = default;
+    expected_move_assign_base& operator=(expected_move_assign_base&&) = delete;
 };
 
 /* T is move constructible and move assignable, T is nothrow move constructible
@@ -1938,10 +1938,10 @@ struct expected_move_assign_base<T, E, true>
     : expected_copy_assign_base<T,E> {
 
     using expected_copy_assign_base<T,E>::expected_copy_assign_base;
-    constexpr expected_move_assign_base() = default;
-    constexpr expected_move_assign_base(expected_move_assign_base const&) = default;
-    constexpr expected_move_assign_base(expected_move_assign_base&&) = default;
-    constexpr expected_move_assign_base& operator=(expected_move_assign_base const&) = default;
+    expected_move_assign_base() = default;
+    expected_move_assign_base(expected_move_assign_base const&) = default;
+    expected_move_assign_base(expected_move_assign_base&&) = default;
+    expected_move_assign_base& operator=(expected_move_assign_base const&) = default;
 
     expected_move_assign_base& operator=(expected_move_assign_base&& rhs)
                 noexcept(std::is_nothrow_move_constructible_v<T> &&
@@ -2016,11 +2016,11 @@ class expected_interface_base : expected_move_assign_base<T,E> {
 
     public:
         using base_t::base_t;
-        constexpr expected_interface_base() = default;
-        constexpr expected_interface_base(expected_interface_base const&) = default;
-        constexpr expected_interface_base(expected_interface_base&&) = default;
-        constexpr expected_interface_base& operator=(expected_interface_base const&) = default;
-        constexpr expected_interface_base& operator=(expected_interface_base&&) = default;
+        expected_interface_base() = default;
+        expected_interface_base(expected_interface_base const&) = default;
+        expected_interface_base(expected_interface_base&&) = default;
+        expected_interface_base& operator=(expected_interface_base const&) = default;
+        expected_interface_base& operator=(expected_interface_base&&) = default;
 
         /* Conditionally explicit unexpected lvalue ctor */
         template <typename G = E,
@@ -2080,7 +2080,7 @@ class expected_interface_base : expected_move_assign_base<T,E> {
 
     protected:
         template <typename... Args>
-        void store_val(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args&&...>);
+        constexpr void store_val(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args&&...>);
 
         template <typename... Args>
         void store_unexpect(Args&&... args) noexcept(std::is_nothrow_constructible_v<E, Args&&...>);
@@ -2241,7 +2241,7 @@ constexpr bool operator!=(unexpected<E2> const& e, expected<T1, E1> const& x) {
 
 template <typename T, typename E>
 template <typename... Args>
-void expected_interface_base<T,E>::store_val(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args&&...>) {
+constexpr void expected_interface_base<T,E>::store_val(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args&&...>) {
     base_t::store_val(std::forward<Args>(args)...);
 }
 
@@ -2311,11 +2311,11 @@ class expected : public expected_detail::expected_interface_base<T,E> {
         using rebind = expected<U, error_type>;
 
         using base_t::base_t;
-        constexpr expected() = default;
-        constexpr expected(expected const&) = default;
-        constexpr expected(expected&&) = default;
-        constexpr expected& operator=(expected const&) = default;
-        constexpr expected& operator=(expected&&) = default;
+        expected() = default;
+        expected(expected const&) = default;
+        expected(expected&&) = default;
+        expected& operator=(expected const&) = default;
+        expected& operator=(expected&&) = default;
 
         /* Conditionally explicit perfect forwarding conversion ctor */
         template <typename U = T, typename TT = T, typename EE = E,
@@ -3219,11 +3219,11 @@ class expected<void, E> : public expected_detail::expected_interface_base<void,E
         using rebind = expected<U, error_type>;
 
         using base_t::base_t;
-        constexpr expected() = default;
-        constexpr expected(expected const&) = default;
-        constexpr expected(expected&&) = default;
-        constexpr expected& operator=(expected const&) = default;
-        constexpr expected& operator=(expected&&) = default;
+        expected() = default;
+        expected(expected const&) = default;
+        expected(expected&&) = default;
+        expected& operator=(expected const&) = default;
+        expected& operator=(expected&&) = default;
 
         /* Conditionally explicit conversion constructors */
         template <typename U, typename G, typename TT = void, typename EE = E,
@@ -3629,11 +3629,11 @@ class expected<void const, E> : public expected<void, E> {
         using rebind = expected<U, error_type>;
 
         using expected<void,E>::expected;
-        constexpr expected() = default;
-        constexpr expected(expected const&) = default;
-        constexpr expected(expected&&) = default;
-        constexpr expected& operator=(expected const&) = default;
-        constexpr expected& operator=(expected&&) = default;
+        expected() = default;
+        expected(expected const&) = default;
+        expected(expected&&) = default;
+        expected& operator=(expected const&) = default;
+        expected& operator=(expected&&) = default;
 };
 
 template <typename E>
@@ -3647,11 +3647,11 @@ class expected<void volatile, E> : public expected<void, E> {
         using rebind = expected<U, error_type>;
 
         using expected<void,E>::expected;
-        constexpr expected() = default;
-        constexpr expected(expected const&) = default;
-        constexpr expected(expected&&) = default;
-        constexpr expected& operator=(expected const&) = default;
-        constexpr expected& operator=(expected&&) = default;
+        expected() = default;
+        expected(expected const&) = default;
+        expected(expected&&) = default;
+        expected& operator=(expected const&) = default;
+        expected& operator=(expected&&) = default;
 };
 
 template <typename E>
@@ -3665,11 +3665,11 @@ class expected<void const volatile, E> : public expected<void, E> {
         using rebind = expected<U, error_type>;
 
         using expected<void,E>::expected;
-        constexpr expected() = default;
-        constexpr expected(expected const&) = default;
-        constexpr expected(expected&&) = default;
-        constexpr expected& operator=(expected const&) = default;
-        constexpr expected& operator=(expected&&) = default;
+        expected() = default;
+        expected(expected const&) = default;
+        expected(expected&&) = default;
+        expected& operator=(expected const&) = default;
+        expected& operator=(expected&&) = default;
 };
 
 template <typename E>
