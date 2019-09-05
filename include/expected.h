@@ -1713,7 +1713,7 @@ struct expected_copy_ctor_base<T, E, false, false>
     using expected_default_ctor_base<T,E>::expected_default_ctor_base;
     constexpr expected_copy_ctor_base() = default;
 
-    expected_copy_ctor_base(expected_copy_ctor_base const&) = delete;
+    constexpr expected_copy_ctor_base(expected_copy_ctor_base const&) = delete;
 };
 
 /* Partial specialization for when
@@ -1773,7 +1773,7 @@ struct expected_move_ctor_base<T, E, false, false>
     constexpr expected_move_ctor_base() = default;
 
     constexpr expected_move_ctor_base(expected_move_ctor_base const&) = default;
-    expected_move_ctor_base(expected_move_ctor_base&&) = delete;
+    constexpr expected_move_ctor_base(expected_move_ctor_base&&) = delete;
 };
 
 /* Partial specialization for when
@@ -1834,7 +1834,7 @@ struct expected_copy_assign_base<T, E, false>
     constexpr expected_copy_assign_base(expected_copy_assign_base const&) = default;
     constexpr expected_copy_assign_base(expected_copy_assign_base&&) = default;
 
-    expected_copy_assign_base& operator=(expected_copy_assign_base const&) = delete;
+    constexpr expected_copy_assign_base& operator=(expected_copy_assign_base const&) = delete;
 };
 
 template <typename T, typename E>
@@ -1928,7 +1928,7 @@ struct expected_move_assign_base<T,E,false>
     constexpr expected_move_assign_base(expected_move_assign_base&&) = default;
 
     constexpr expected_move_assign_base& operator=(expected_move_assign_base const&) = default;
-    expected_move_assign_base& operator=(expected_move_assign_base&&) = delete;
+    constexpr expected_move_assign_base& operator=(expected_move_assign_base&&) = delete;
 };
 
 /* T is move constructible and move assignable, T is nothrow move constructible
