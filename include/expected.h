@@ -1446,6 +1446,18 @@ struct no_init_t {
 
 inline no_init_t constexpr no_init{};
 
+struct internal_expect_t {
+    explicit internal_expect_t() = default;
+};
+
+inline internal_expect_t constexpr internal_expect{};
+
+struct internal_unexpect_t {
+    explicit internal_unexpect_t() = default;
+};
+
+inline internal_unexpect_t constexpr internal_unexpect{};
+
 /* expected hierarchy */
 
 /* expected_base */
@@ -1465,6 +1477,14 @@ struct expected_base<T, E, true, true> {
     constexpr expected_base() : has_val_(true), val_(T()) { }
     constexpr expected_base(no_init_t) : has_val_{false} { }
 
+    template <typename... Args>
+    constexpr expected_base(internal_expect_t, Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args&&...>)
+        : has_val_(true), val_(std::forward<Args>(args)...) { }
+
+    template <typename Unex = unexpected<E>>
+    constexpr expected_base(internal_unexpect_t, Unex&& u) noexcept(std::is_nothrow_constructible_v<unexpected<E>, Unex&&>)
+        : has_val_(false), unexpect_(std::forward<Unex>(u)) { }
+
     ~expected_base() = default;
 
     bool has_val_;
@@ -1481,6 +1501,14 @@ struct expected_base<T, E, false, true> {
 
     constexpr expected_base() : has_val_(true), val_(T()) { }
     constexpr expected_base(no_init_t) : has_val_{false} { }
+
+    template <typename... Args>
+    constexpr expected_base(internal_expect_t, Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args&&...>)
+        : has_val_(true), val_(std::forward<Args>(args)...) { }
+
+    template <typename Unex = unexpected<E>>
+    constexpr expected_base(internal_unexpect_t, Unex&& u) noexcept(std::is_nothrow_constructible_v<unexpected<E>, Unex&&>)
+        : has_val_(false), unexpect_(std::forward<Unex>(u)) { }
 
     ~expected_base() {
         if(has_val_)
@@ -1502,6 +1530,14 @@ struct expected_base<T, E, true, false> {
     constexpr expected_base() : has_val_(true), val_(T()) { }
     constexpr expected_base(no_init_t) : has_val_{false} { }
 
+    template <typename... Args>
+    constexpr expected_base(internal_expect_t, Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args&&...>)
+        : has_val_(true), val_(std::forward<Args>(args)...) { }
+
+    template <typename Unex = unexpected<E>>
+    constexpr expected_base(internal_unexpect_t, Unex&& u) noexcept(std::is_nothrow_constructible_v<unexpected<E>, Unex&&>)
+        : has_val_(false), unexpect_(std::forward<Unex>(u)) { }
+
     ~expected_base() {
         if(!has_val_)
             unexpect_.~unexpected<E>();
@@ -1521,6 +1557,14 @@ struct expected_base<T, E, false, false> {
 
     constexpr expected_base() : has_val_(true), val_(T()) { }
     constexpr expected_base(no_init_t) : has_val_{false} { }
+
+    template <typename... Args>
+    constexpr expected_base(internal_expect_t, Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args&&...>)
+        : has_val_(true), val_(std::forward<Args>(args)...) { }
+
+    template <typename Unex = unexpected<E>>
+    constexpr expected_base(internal_unexpect_t, Unex&& u) noexcept(std::is_nothrow_constructible_v<unexpected<E>, Unex&&>)
+        : has_val_(false), unexpect_(std::forward<Unex>(u)) { }
 
     ~expected_base() {
         if(has_val_)
@@ -1548,6 +1592,14 @@ struct expected_base<void, E, false, true> {
     constexpr expected_base() : has_val_(true) { }
     constexpr expected_base(no_init_t) : has_val_{false} { }
 
+    template <typename... Args>
+    constexpr expected_base(internal_expect_t, Args&&...) noexcept
+        : has_val_(true) { }
+
+    template <typename Unex = unexpected<E>>
+    constexpr expected_base(internal_unexpect_t, Unex&& u) noexcept(std::is_nothrow_constructible_v<unexpected<E>, Unex&&>)
+        : has_val_(false), unexpect_(std::forward<Unex>(u)) { }
+
     ~expected_base() = default;
 
     bool has_val_;
@@ -1565,6 +1617,14 @@ struct expected_base<void, E, false, false> {
 
     constexpr expected_base() : has_val_(true) { }
     constexpr expected_base(no_init_t) : has_val_{false} { }
+
+    template <typename... Args>
+    constexpr expected_base(internal_expect_t, Args&&...) noexcept
+        : has_val_(true) { }
+
+    template <typename Unex = unexpected<E>>
+    constexpr expected_base(internal_unexpect_t, Unex&& u) noexcept(std::is_nothrow_constructible_v<unexpected<E>, Unex&&>)
+        : has_val_(false), unexpect_(std::forward<Unex>(u)) { }
 
     ~expected_base() {
         if(!has_val_)
@@ -1723,10 +1783,12 @@ struct expected_copy_ctor_base<T, E, false, false>
 template <typename T, typename E>
 struct expected_copy_ctor_base<T, E, true, false>
     : expected_default_ctor_base<T,E> {
-    using expected_default_ctor_base<T,E>::expected_default_ctor_base;
+    using base_t = expected_default_ctor_base<T,E>;
+    using base_t::base_t;
     expected_copy_ctor_base() = default;
 
-    expected_copy_ctor_base(expected_copy_ctor_base const& rhs) {
+    expected_copy_ctor_base(expected_copy_ctor_base const& rhs)
+        : base_t(no_init) {
         if(rhs.has_val_)
             this->store_val(rhs.val_);
         else
@@ -1740,10 +1802,12 @@ struct expected_copy_ctor_base<T, E, true, false>
 template <typename T, typename E>
 struct expected_copy_ctor_base<T, E, true, true>
     : expected_default_ctor_base<T,E> {
-    using expected_default_ctor_base<T,E>::expected_default_ctor_base;
+    using base_t = expected_default_ctor_base<T,E>;
+    using base_t::base_t;
     expected_copy_ctor_base() = default;
 
-    constexpr expected_copy_ctor_base(expected_copy_ctor_base const& rhs) {
+    constexpr expected_copy_ctor_base(expected_copy_ctor_base const& rhs)
+        : base_t(no_init) {
         if(rhs.has_val_)
             this->store_val(rhs.val_);
         else
@@ -2080,6 +2144,12 @@ class expected_interface_base : expected_move_assign_base<T,E> {
 
     protected:
         template <typename... Args>
+        constexpr expected_interface_base(internal_expect_t, Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args&&...>);
+
+        template <typename Unex = unexpected<E>>
+        constexpr expected_interface_base(internal_unexpect_t, Unex&& u) noexcept(std::is_nothrow_constructible_v<E, Unex&&>);
+
+        template <typename... Args>
         constexpr void store_val(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args&&...>);
 
         template <typename... Args>
@@ -2108,51 +2178,40 @@ template <typename G,
           expected_detail::enable_if_constructible_t<E, G const&>*,
           expected_detail::enable_if_convertible_t<G const&, E>*>
 constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G> const& e)
-    : base_t(no_init) {
-    this->store_unexpect(e);
-}
+    : base_t(internal_unexpect, e) { }
 
 template <typename T, typename E>
 template <typename G,
           expected_detail::enable_if_constructible_but_not_convertible_t<E, G const&>*>
 constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G> const& e)
-    : base_t(no_init) {
-    this->store_unexpect(e);
-}
+    : base_t(internal_unexpect, e) { }
 
 template <typename T, typename E>
 template <typename G,
           expected_detail::enable_if_constructible_t<E, G&&>*,
           expected_detail::enable_if_convertible_t<G&&, E>*>
 constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G>&& e)
-                noexcept(std::is_nothrow_constructible_v<E, G&&>) : base_t(no_init) {
-    this->store_unexpect(std::move(e));
-}
+                noexcept(std::is_nothrow_constructible_v<E, G&&>)
+    : base_t(internal_unexpect, std::move(e)) { }
 
 template <typename T, typename E>
 template <typename G,
           expected_detail::enable_if_constructible_but_not_convertible_t<E, G&&>*>
 constexpr expected_interface_base<T,E>::expected_interface_base(unexpected<G>&& e)
-                noexcept(std::is_nothrow_constructible_v<E, G&&>) : base_t(no_init) {
-    this->store_unexpect(std::move(e));
-}
+                noexcept(std::is_nothrow_constructible_v<E, G&&>)
+    : base_t(internal_unexpect, std::move(e)) { }
 
 template <typename T, typename E>
 template <typename... Args,
           expected_detail::enable_if_constructible_t<E, Args...>*>
 constexpr expected_interface_base<T,E>::expected_interface_base(unexpect_t, Args&&... args)
-    : base_t(no_init) {
-    this->store_unexpect(std::forward<Args>(args)...);
-}
+    : base_t(internal_unexpect, std::forward<Args>(args)...) { }
 
 template <typename T, typename E>
 template <typename U, typename... Args,
           expected_detail::enable_if_constructible_t<E, std::initializer_list<U>&, Args...>*>
-constexpr expected_interface_base<T,E>::expected_interface_base(unexpect_t,
-                std::initializer_list<U> il, Args&&... args) : base_t(no_init) {
-
-    this->store_unexpect(il, std::forward<Args>(args)...);
-}
+constexpr expected_interface_base<T,E>::expected_interface_base(unexpect_t, std::initializer_list<U> il, Args&&... args)
+    : base_t(internal_unexpect, il, std::forward<Args>(args)...) { }
 
 template <typename T, typename E>
 template <typename G, typename EE,
@@ -2238,6 +2297,18 @@ template <typename T1, typename E1, typename E2>
 constexpr bool operator!=(unexpected<E2> const& e, expected<T1, E1> const& x) {
     return bool(x) ? true : unexpected(x.error()) != e;
 }
+
+template <typename T, typename E>
+template <typename... Args>
+constexpr expected_interface_base<T,E>::expected_interface_base(internal_expect_t, Args&&... args)
+                noexcept(std::is_nothrow_constructible_v<T, Args&&...>)
+    : base_t(internal_expect, std::forward<Args>(args)...) { }
+
+template <typename T, typename E>
+template <typename Unex>
+constexpr expected_interface_base<T,E>::expected_interface_base(internal_unexpect_t, Unex&& u)
+                noexcept(std::is_nothrow_constructible_v<E, Unex&&>)
+    : base_t(internal_unexpect, std::forward<Unex>(u)) { }
 
 template <typename T, typename E>
 template <typename... Args>
@@ -2489,16 +2560,14 @@ template <typename T, typename E>
 template <typename U, typename TT, typename EE,
           expected_detail::expected_enable_forwarding_ref_ctor_t<TT,EE,U>*,
           expected_detail::expected_enable_implicit_forwarding_ref_ctor_t<TT,U>*>
-constexpr expected<T,E>::expected(U&& v) : base_t(expected_detail::no_init) {
-    this->store_val(std::forward<U>(v));
-}
+constexpr expected<T,E>::expected(U&& v)
+    : base_t(expected_detail::internal_expect, std::forward<U>(v)) { }
 
 template <typename T, typename E>
 template <typename U, typename TT, typename EE,
           expected_detail::expected_enable_explicit_forwarding_ref_ctor_t<TT,EE,U>*>
-constexpr expected<T,E>::expected(U&& v) : base_t(expected_detail::no_init) {
-    this->store_val(std::forward<U>(v));
-}
+constexpr expected<T,E>::expected(U&& v)
+    : base_t(expected_detail::internal_expect, std::forward<U>(v)) { }
 
 template <typename T, typename E>
 template <typename U, typename G, typename TT, typename EE,
@@ -2550,17 +2619,13 @@ template <typename T, typename E>
 template <typename... Args,
           expected_detail::enable_if_constructible_t<T, Args...>*>
 constexpr expected<T,E>::expected(in_place_t, Args&&... args)
-    : base_t(expected_detail::no_init) {
-    this->store_val(std::forward<Args>(args)...);
-}
+    : base_t(expected_detail::internal_expect, std::forward<Args>(args)...) { }
 
 template <typename T, typename E>
 template <typename U, typename... Args,
           expected_detail::enable_if_constructible_t<T, std::initializer_list<U>&, Args...>*>
 constexpr expected<T,E>::expected(in_place_t, std::initializer_list<U> il, Args&&... args)
-    : base_t(expected_detail::no_init) {
-    this->store_val(il, std::forward<Args>(args)...);
-}
+    : base_t(expected_detail::internal_expect, il, std::forward<Args>(args)...) { }
 
 template <typename T, typename E>
 template <typename U, typename TT, typename EE,
