@@ -1610,8 +1610,11 @@ struct expected_base<void, E, false, true> {
 
     ~expected_base() = default;
 
+    struct value_t{};
+
     bool has_val_;
     union {
+        value_t val_;
         unexpected<E> unexpect_;
         uninitialized_t uninitialized_;
     };
@@ -1638,8 +1641,11 @@ struct expected_base<void, E, false, false> {
             unexpect_.~unexpected<E>();
     }
 
+    struct value_t{};
+
     bool has_val_;
     union {
+        value_t val_;
         unexpected<E> unexpect_;
         uninitialized_t uninitialized_;
     };
