@@ -1444,6 +1444,9 @@ struct convert<std::array<T1,N>, std::array<T2,N>, F, FRet, false, B> {
  * one of the actual members to be default constructible */
 struct uninitialized_t { };
 
+/* Type used for representing val_ when T is cv void */
+struct void_member_t { };
+
 struct no_init_t {
     explicit no_init_t() = default;
 };
@@ -1588,10 +1591,6 @@ struct expected_base<T, E, false, false> {
     };
 };
 
-
-/* The below are partial specialilzations for where T is void, use
- * dummy type in union. */
-
 /* T is void, E trivially destructible. expected should be
  * trivially destructible */
 template <typename E>
@@ -1610,11 +1609,9 @@ struct expected_base<void, E, false, true> {
 
     ~expected_base() = default;
 
-    struct value_t{};
-
     bool has_val_;
     union {
-        value_t val_;
+        void_member_t val_;
         unexpected<E> unexpect_;
         uninitialized_t uninitialized_;
     };
@@ -1641,11 +1638,9 @@ struct expected_base<void, E, false, false> {
             unexpect_.~unexpected<E>();
     }
 
-    struct value_t{};
-
     bool has_val_;
     union {
-        value_t val_;
+        void_member_t val_;
         unexpected<E> unexpect_;
         uninitialized_t uninitialized_;
     };
@@ -1717,6 +1712,8 @@ struct expected_construction_base<void, E> : expected_base<void,E> {
 
     template <typename... Args>
     constexpr void store_val(Args&&...) noexcept {
+        /* Initialize to prevent UB in future reads of val_ */
+        new (std::addressof(this->val_)) void_member_t{};
         this->has_val_ = true;
     }
 
