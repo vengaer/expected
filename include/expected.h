@@ -1440,6 +1440,10 @@ struct convert<std::array<T1,N>, std::array<T2,N>, F, FRet, false, B> {
 
 #endif
 
+/* Aggregate used for intializing unions without requiring
+ * one of the actual members to be default constructible */
+struct uninitialized_t { };
+
 struct no_init_t {
     explicit no_init_t() = default;
 };
@@ -1475,7 +1479,7 @@ template <typename T, typename E>
 struct expected_base<T, E, true, true> {
 
     constexpr expected_base() : has_val_(true), val_(T()) { }
-    constexpr expected_base(no_init_t) : has_val_{false} { }
+    constexpr expected_base(no_init_t) : has_val_{false}, uninitialized_{} { }
 
     template <typename... Args>
     constexpr expected_base(internal_expect_t, Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args&&...>)
@@ -1491,6 +1495,7 @@ struct expected_base<T, E, true, true> {
     union {
         T val_;
         unexpected<E> unexpect_;
+        uninitialized_t uninitialized_;
     };
 };
 
@@ -1500,7 +1505,7 @@ template <typename T, typename E>
 struct expected_base<T, E, false, true> {
 
     constexpr expected_base() : has_val_(true), val_(T()) { }
-    constexpr expected_base(no_init_t) : has_val_{false} { }
+    constexpr expected_base(no_init_t) : has_val_{false}, uninitialized_{} { }
 
     template <typename... Args>
     constexpr expected_base(internal_expect_t, Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args&&...>)
@@ -1519,6 +1524,7 @@ struct expected_base<T, E, false, true> {
     union {
         T val_;
         unexpected<E> unexpect_;
+        uninitialized_t uninitialized_;
     };
 };
 
@@ -1528,7 +1534,7 @@ template <typename T, typename E>
 struct expected_base<T, E, true, false> {
 
     constexpr expected_base() : has_val_(true), val_(T()) { }
-    constexpr expected_base(no_init_t) : has_val_{false} { }
+    constexpr expected_base(no_init_t) : has_val_{false}, uninitialized_{} { }
 
     template <typename... Args>
     constexpr expected_base(internal_expect_t, Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args&&...>)
@@ -1547,6 +1553,7 @@ struct expected_base<T, E, true, false> {
     union {
         T val_;
         unexpected<E> unexpect_;
+        uninitialized_t uninitialized_;
     };
 };
 
@@ -1556,7 +1563,7 @@ template <typename T, typename E>
 struct expected_base<T, E, false, false> {
 
     constexpr expected_base() : has_val_(true), val_(T()) { }
-    constexpr expected_base(no_init_t) : has_val_{false} { }
+    constexpr expected_base(no_init_t) : has_val_{false}, uninitialized_{} { }
 
     template <typename... Args>
     constexpr expected_base(internal_expect_t, Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args&&...>)
@@ -1577,6 +1584,7 @@ struct expected_base<T, E, false, false> {
     union {
         T val_;
         unexpected<E> unexpect_;
+        uninitialized_t uninitialized_;
     };
 };
 
@@ -1590,7 +1598,7 @@ template <typename E>
 struct expected_base<void, E, false, true> {
 
     constexpr expected_base() : has_val_(true) { }
-    constexpr expected_base(no_init_t) : has_val_{false} { }
+    constexpr expected_base(no_init_t) : has_val_{false}, uninitialized_{} { }
 
     template <typename... Args>
     constexpr expected_base(internal_expect_t, Args&&...) noexcept
@@ -1603,10 +1611,9 @@ struct expected_base<void, E, false, true> {
     ~expected_base() = default;
 
     bool has_val_;
-    struct none{};
     union {
-        none val_;
         unexpected<E> unexpect_;
+        uninitialized_t uninitialized_;
     };
 };
 
@@ -1616,7 +1623,7 @@ template <typename E>
 struct expected_base<void, E, false, false> {
 
     constexpr expected_base() : has_val_(true) { }
-    constexpr expected_base(no_init_t) : has_val_{false} { }
+    constexpr expected_base(no_init_t) : has_val_{false}, uninitialized_{} { }
 
     template <typename... Args>
     constexpr expected_base(internal_expect_t, Args&&...) noexcept
@@ -1632,10 +1639,9 @@ struct expected_base<void, E, false, false> {
     }
 
     bool has_val_;
-    struct none{};
     union {
-        none val_;
         unexpected<E> unexpect_;
+        uninitialized_t uninitialized_;
     };
 };
 
