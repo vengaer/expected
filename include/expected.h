@@ -1596,7 +1596,7 @@ struct expected_base<T, E, false, false> {
 template <typename E>
 struct expected_base<void, E, false, true> {
 
-    constexpr expected_base() : has_val_(true) { }
+    constexpr expected_base() : has_val_(true), val_{} { }
     constexpr expected_base(no_init_t) : has_val_{false}, uninitialized_{} { }
 
     template <typename... Args>
@@ -1622,7 +1622,7 @@ struct expected_base<void, E, false, true> {
 template <typename E>
 struct expected_base<void, E, false, false> {
 
-    constexpr expected_base() : has_val_(true) { }
+    constexpr expected_base() : has_val_(true), val_{} { }
     constexpr expected_base(no_init_t) : has_val_{false}, uninitialized_{} { }
 
     template <typename... Args>
