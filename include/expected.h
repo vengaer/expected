@@ -1712,8 +1712,6 @@ struct expected_construction_base<void, E> : expected_base<void,E> {
 
     template <typename... Args>
     constexpr void store_val(Args&&...) noexcept {
-        /* Initialize to prevent UB in future reads of val_ */
-        new (std::addressof(this->val_)) void_member_t{};
         this->has_val_ = true;
     }
 
